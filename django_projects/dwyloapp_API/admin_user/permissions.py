@@ -2,8 +2,9 @@ from rest_framework.permissions import BasePermission
 from accounts.models import BlackListedToken
 
 class IsTokenValid(BasePermission):
+	"""Check token is valid or not"""
     def has_permission(self, request, view):
-        user_id = request.user.id      
+        user_id = request.user.id            
         is_allowed_user = True
         token = request.auth.decode("utf-8")
         try:

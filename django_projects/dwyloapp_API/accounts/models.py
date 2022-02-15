@@ -9,7 +9,7 @@ from datetime import datetime
 
 
 class UserAccountManager(BaseUserManager):
-    def create_user(self,  email, name, mobile_no, password, role):
+    def create_user(self, email, name, mobile_no, password, role):
         if not email:
             raise ValueError('user must have an email')
 

@@ -4,7 +4,7 @@ from accounts import views as account_view
 
 app_name = "accounts"
 urlpatterns = [
-	path('user',account_view.Users.as_view()),
+	path('user',account_view.UsersView.as_view()),
     path('verify-email',account_view.VerifyEmail.as_view()),
     path('resend-otp',account_view.VerifyEmail.as_view()),
     path('send-otp',account_view.VerifyEmail.as_view()),

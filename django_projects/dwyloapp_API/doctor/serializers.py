@@ -1,19 +1,19 @@
 from rest_framework import serializers
 from accounts.models import UserAccount
-from accounts.views import  send_otp_to_email 
 from .models import DoctorProfile, DoctorInfo, DoctorAvailability
+from project.utility.send_otp_email import send_otp_to_email
+
+
+class DoctorProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DoctorProfile
+        fields = '__all__'
+
 
 class DoctorSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserAccount
-        fields = ['email','name','mobile_no','role','password']#"__all__"
-
-    def create(self, validated_data):
-        # print(**validated_data)
-        user = UserAccount.objects.create_user(**validated_data)
-        send_otp_to_email(user.email, user)
-        return user
-
+        fields = ['email', 'name', 'mobile_no', 'role', 'password']#"__all__"
 
 
 class DoctorInfoSerializer(serializers.ModelSerializer):
@@ -21,36 +21,31 @@ class DoctorInfoSerializer(serializers.ModelSerializer):
         model = DoctorInfo
         fields = '__all__'#['clinic','consultation_fees','experties_area'] 
 
-    def update(self,instance, validated_data):
-        print('validated_data',validated_data)
+    def update(self, instance, validated_data):
         instance.clinic = validated_data.get('clinic',instance.clinic)
         instance.consultation_fees = validated_data.get('consultation_fees',instance.consultation_fees)
         saved_experties_area = instance.experties_area
-        saved_experties_area = saved_experties_area.split(',')
+        if saved_experties_area is not None:
+            saved_experties_area = saved_experties_area.split(',')
         experties_area = validated_data.get('experties_area',instance.experties_area)
         if experties_area:
             experties_area = experties_area.split(',')
+            if saved_experties_area is None:
+                saved_experties_area = ''
             experties_area.extend(saved_experties_area)
-            print(experties_area)
             experties_area = set(experties_area)
             instance.experties_area = ','.join(experties_area)
         instance.save()
         return instance
              
 
-class DoctorProfileRegisterSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = DoctorProfile
-        fields = '__all__'
-
-
 
 class DoctorProfileUpdateSerializer(serializers.ModelSerializer):
-    doctor_profile = DoctorProfileRegisterSerializer()
+    doctor_profile = DoctorProfileSerializer()
 
     class Meta:
         model = UserAccount
-        fields = ['doctor_profile', "name",'email','mobile_no']
+        fields = ['doctor_profile', "name", 'email', 'mobile_no']
 
 
     def update(self,instance, validated_data):

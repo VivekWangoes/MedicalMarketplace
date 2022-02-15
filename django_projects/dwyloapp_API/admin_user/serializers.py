@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from accounts.models import UserAccount
 from accounts import views as account_view
-
+from project.utility.send_otp_email import send_otp_to_email
 
 class AdminSerializer(serializers.ModelSerializer):
     class Meta:

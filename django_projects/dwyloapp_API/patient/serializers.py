@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from accounts.models import UserAccount
 from accounts.views import send_otp_to_email
-
+from project.utility.send_otp_email import send_otp_to_email
 
 class PatientSerializer(serializers.ModelSerializer):
     class Meta:

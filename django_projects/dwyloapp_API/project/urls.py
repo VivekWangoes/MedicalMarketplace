@@ -15,8 +15,8 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.conf.urls import url,include
-from rest_framework_simplejwt import views as jwt_views
-from rest_framework_jwt.views import obtain_jwt_token, refresh_jwt_token,verify_jwt_token
+#from rest_framework_simplejwt import views as jwt_views
+from rest_framework_jwt.views import obtain_jwt_token, refresh_jwt_token, verify_jwt_token
 
 urlpatterns = [
     url('admin/', admin.site.urls),
@@ -27,12 +27,12 @@ urlpatterns = [
     url('api/password_reset/', include('django_rest_passwordreset.urls', namespace='password_reset')),
 
     #Account app url
-    url('', include('accounts.urls')),
+    url('accounts/', include('accounts.urls')),
     #Admin app url
-    url('', include('adminuser.urls')),
+    url('admin-user/', include('admin_user.urls')),
     #Doctor app url
-    url('', include('doctor.urls')),
+    url('doctor/', include('doctor.urls')),
     #Patient app url
-    url('', include('patient.urls'))
+    url('patient/', include('patient.urls'))
 
 ]

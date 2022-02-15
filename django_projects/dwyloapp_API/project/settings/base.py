@@ -38,7 +38,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'accounts',
-    'adminuser',
+    'admin_user',
     'doctor',
     'patient',
     'rest_framework',
