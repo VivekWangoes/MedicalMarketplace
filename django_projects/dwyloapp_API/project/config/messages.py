@@ -16,9 +16,13 @@ PROFILE_CREATED = "Your profile created successfully"
 PROFILE_UPDATED = "Your profile updated successfully"
 INFO_CREATED = "Your information created successfully"
 INFO_UPDATED = "Your info updated successfully"
+INFO_DELETED = "Your record deleted successfully"
+NO_RECORD = "No record found"
 INVALID_DATETIME = "Your given datetime is invalid please check"
 ALREADY_DATETIME_PRESENT = "plese give new time this given time already present"
 AVAILABILITY_SET = "Your Availability saved successfully"
+APPOINTMENT_CONFIRMED = "Your appointment is confirmed"
+
 
 
 

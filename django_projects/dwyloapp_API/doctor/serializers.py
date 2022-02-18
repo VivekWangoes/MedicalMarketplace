@@ -1,86 +1,111 @@
 from rest_framework import serializers
 from accounts.models import UserAccount
-from .models import DoctorProfile, DoctorInfo, DoctorAvailability
+from .models import DoctorProfile, DoctorAvailability, DoctorSlots, Appointments
 from project.utility.send_otp_email import send_otp_to_email
+from django.db import transaction
 
-
-class DoctorProfileSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = DoctorProfile
-        fields = '__all__'
+# class DoctorSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = UserAccount
+#         fields = '__all__'
 
 
 class DoctorSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserAccount
-        fields = ['email', 'name', 'mobile_no', 'role', 'password']#"__all__"
+        fields = (
+            'id',
+            'email',
+            'name',
+            'mobile_no',
+            'role'
+        )
 
 
-class DoctorInfoSerializer(serializers.ModelSerializer):
+class DoctorProfileSerializer(serializers.ModelSerializer):
+    doctor = DoctorSerializer()
     class Meta:
-        model = DoctorInfo
-        fields = '__all__'#['clinic','consultation_fees','experties_area'] 
+        model = DoctorProfile
+        fields = (
+            'doctor',
+            'doctor_pic',
+            'gender',
+            'career_started',
+            'specialty',
+            'location_city',
+            'clinic',
+            'consultation_fees',
+            'expertise_area'
+        )
 
     def update(self, instance, validated_data):
-        instance.clinic = validated_data.get('clinic',instance.clinic)
-        instance.consultation_fees = validated_data.get('consultation_fees',instance.consultation_fees)
-        saved_experties_area = instance.experties_area
-        if saved_experties_area is not None:
-            saved_experties_area = saved_experties_area.split(',')
-        experties_area = validated_data.get('experties_area',instance.experties_area)
-        if experties_area:
-            experties_area = experties_area.split(',')
-            if saved_experties_area is None:
-                saved_experties_area = ''
-            experties_area.extend(saved_experties_area)
-            experties_area = set(experties_area)
-            instance.experties_area = ','.join(experties_area)
-        instance.save()
-        return instance
-             
+        with transaction.atomic():
+            print(validated_data)
+            doctor_data = dict(validated_data.pop('doctor'))
+            instance.email = doctor_data.get('email', instance.email)
+            instance.name = doctor_data.get('name', instance.name)
+            instance.mobile_no = doctor_data.get('mobile_no', instance.mobile_no)
+            if doctor_data.get('email'):
+                instance.is_email_verified = False
+                send_otp_to_email(doctor_data.get('email'), instance)
+            instance.save()
+            if validated_data:
+                try:
+                    print(validated_data)
+                    profile_obj = DoctorProfile.objects.get(doctor=instance.id)
+                    profile_obj.doctor_pic = validated_data.get('doctor_pic',profile_obj.doctor_pic)
+                    profile_obj.gender = validated_data.get('gender',profile_obj.gender)
+                    profile_obj.career_started = validated_data.get('career_started',
+                                                                  profile_obj.career_started)
+                    profile_obj.specialty = validated_data.get('specialty',profile_obj.specialty)
+                    profile_obj.location_city = validated_data.get('location_city',
+                                                                 profile_obj.location_city)
+                    profile_obj.clinic = validated_data.get('clinic',profile_obj.clinic)
+                    profile_obj.consultation_fees = validated_data.get('consultation_fees',
+                                                                     profile_obj.consultation_fees)
+                    saved_expertise_area = profile_obj.expertise_area
+                    if saved_expertise_area is not None:
+                        saved_expertise_area = saved_expertise_area.split(',')
+                    expertise_area = validated_data.get('expertise_area',profile_obj.expertise_area)
+                    if expertise_area:
+                        expertise_area = expertise_area.split(',')
+                        if saved_expertise_area is None:
+                            saved_expertise_area = ''
+                        expertise_area.extend(saved_expertise_area)
+                        print(saved_expertise_area,expertise_area)
+                        expertise_area = set(expertise_area)
+                        profile_obj.expertise_area = ','.join(expertise_area)
+                    if instance.is_email_verified == True:
+                        profile_obj.verification = 'Completed'
+                    profile_obj.save()
+                    return instance
+                except:
+                    return instance
+            else:
+                return instance
 
 
-class DoctorProfileUpdateSerializer(serializers.ModelSerializer):
-    doctor_profile = DoctorProfileSerializer()
 
+class DoctorSlotSerializer(serializers.ModelSerializer):
     class Meta:
-        model = UserAccount
-        fields = ['doctor_profile', "name", 'email', 'mobile_no']
-
-
-    def update(self,instance, validated_data):
-        profile_data = dict(validated_data['doctor_profile'])
-        instance.email = validated_data.get('email', instance.email)
-        instance.name = validated_data.get('name', instance.name)
-        instance.mobile_no = validated_data.get('mobile_no', instance.mobile_no)
-        if validated_data.get('email'):
-            instance.is_email_verified = False
-            send_otp_to_email(validated_data.get('email'), instance)
-        instance.save()
-        if profile_data:
-            try:
-                user_obj = DoctorProfile.objects.get(doctor=instance.id)
-                user_obj.gender = profile_data.get('gender',user_obj.gender)
-                user_obj.experience = profile_data.get('experience',user_obj.experience)
-                user_obj.specialty = profile_data.get('specialty',user_obj.specialty)
-                user_obj.location_city = profile_data.get('location_city',user_obj.location_city)
-                if instance.is_email_verified == True :
-                    user_obj.verification = 'Completed'
-                user_obj.save()
-
-                return instance
-            except:
-                return instance
-        else:
-            return instance
-
-
+        model = DoctorSlots
+        fields = '__all__'
 
 
 class DoctorAvailabilitySerializer(serializers.ModelSerializer):
+    time_slot = DoctorSlotSerializer(many=True)
     class Meta:
         model = DoctorAvailability
-        fields = "__all__"
-       
+        fields = (
+            'time_slot',
+            'doctor',
+            'slot_date',
+            'day',
+            'slot'
+        )
 
-        
+   
+class ConfirmAppointmentsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Appointments
+        fields = '__all__'    

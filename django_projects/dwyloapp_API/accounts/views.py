@@ -8,7 +8,7 @@ import time
 from rest_framework_jwt.settings import api_settings
 from .models import UserAccount,BlackListedToken, ContactSupport
 from .permissions import IsTokenValid,IsDoctor,IsPatient
-from .serializers import ContactSupportSerializer
+from .serializers import ContactSupportSerializer, UserSerializerForView
 from datetime import datetime
 from django.utils import timezone
 from django.core.mail import EmailMultiAlternatives
@@ -23,12 +23,13 @@ from django.template.loader import render_to_string
 from django.contrib.sites.shortcuts import get_current_site
 from project.utility.send_otp_email import send_otp_to_email
 from project.config import messages as Messages
-
+from datetime import datetime
+from django.db import transaction
 
 # Create your views here.
 class VerifyEmail(APIView):
     """This class is used for verify email"""
-    permission_classes = [AllowAny]
+    permission_classes = [AllowAny, ]
     def post(self, request):
         try:
             current_time = timezone.now()
@@ -37,7 +38,7 @@ class VerifyEmail(APIView):
             time_delta = (current_time - user_obj.otp_created)
             total_seconds = time_delta.total_seconds()
             minutes = total_seconds/60
-            if minutes > 10:
+            if minutes > 2:
                 user_obj.otp = None
                 user_obj.save()
                 return Response({'message': Messages.OTP_TIME_EXPIRED}, 
@@ -47,27 +48,29 @@ class VerifyEmail(APIView):
                 return Response({'message': Messages.ALREADY_EMAIL_VERIFIED}, 
                                  status=status.HTTP_208_ALREADY_REPORTED)
             
-            if user_obj.otp == otp:
-                user_obj.is_email_verified = True
-                user_obj.save()
-                return Response({'message': Messages.EMAIL_VERIFIED},
-                                 status=status.HTTP_202_ACCEPTED)
-            else:
-                return Response({'message': Messages.OTP_WRONG}, 
-                                 status=status.HTTP_400_BAD_REQUEST)
+            with transaction.atomic():
+                if user_obj.otp == otp:
+                    user_obj.is_email_verified = True
+                    user_obj.save()
+                    return Response({'message': Messages.EMAIL_VERIFIED},
+                                     status=status.HTTP_202_ACCEPTED)
+                else:
+                    return Response({'message': Messages.OTP_WRONG}, 
+                                     status=status.HTTP_400_BAD_REQUEST)
         except Exception as exception:
             return Response({'error': str(exception)}, 
                              status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def patch(self, request):
         try:
-            email = request.data.get('email')
-            user_obj = UserAccount.objects.get(email=email)
-            if not user_obj:
-                return Response({'message': Messages.USER_NOT_EXISTS},
-                                 status=status.HTTP_404_NOT_FOUND)
-            send_otp_to_email(email, user_obj)
-            return Response({'message': Messages.OTP_SENT})
+            with transaction.atomic():
+                email = request.data.get('email')
+                user_obj = UserAccount.objects.get(email=email)
+                if not user_obj:
+                    return Response({'message': Messages.USER_NOT_EXISTS},
+                                     status=status.HTTP_404_NOT_FOUND)
+                send_otp_to_email(email, user_obj)
+                return Response({'message': Messages.OTP_SENT})
         except Exception as exception:
             return Response({'error': str(exception)}, 
                              status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -75,7 +78,7 @@ class VerifyEmail(APIView):
 
 class LoginWithOTP(APIView):
     """This class is used for  login with otp"""
-    permission_classes = [AllowAny]
+    permission_classes = [AllowAny, ]
     def post(self, request):
         try:
             user_obj = UserAccount.objects.get(otp=request.data.get('otp'))
@@ -85,22 +88,23 @@ class LoginWithOTP(APIView):
                 time_delta = (current_time - user_obj.otp_created)
                 total_seconds = time_delta.total_seconds()
                 minutes = total_seconds/60
-                if minutes > 10:
-                    user_obj.otp = None
-                    user_obj.save()
-                    return Response({'message': Messages.OTP_TIME_EXPIRED}, 
-                                     status=status.HTTP_408_REQUEST_TIMEOUT)
-                if user_obj.otp == otp:
-                    jwt_payload_handler = api_settings.JWT_PAYLOAD_HANDLER
-                    jwt_encode_handler = api_settings.JWT_ENCODE_HANDLER
-                    payload = jwt_payload_handler(user_obj)
-                    token = jwt_encode_handler(payload)
-                    return Response({'message': Messages.USER_LOGGED_IN, 
-                                     'id': user_obj.id, 'user': str(user_obj),
-                                     'role': user_obj.role,'token': token},
-                                     status=status.HTTP_200_OK)
-                else:
-                    return Response({'message': Messages.OTP_WRONG},
+                with transaction.atomic():
+                    if minutes > 10:
+                        user_obj.otp = None
+                        user_obj.save()
+                        return Response({'message': Messages.OTP_TIME_EXPIRED}, 
+                                         status=status.HTTP_408_REQUEST_TIMEOUT)
+                    if user_obj.otp == otp:
+                        jwt_payload_handler = api_settings.JWT_PAYLOAD_HANDLER
+                        jwt_encode_handler = api_settings.JWT_ENCODE_HANDLER
+                        payload = jwt_payload_handler(user_obj)
+                        token = jwt_encode_handler(payload)
+                        return Response({'message': Messages.USER_LOGGED_IN, 
+                                         'id': user_obj.id, 'user': str(user_obj),
+                                         'role': user_obj.role,'token': token},
+                                         status=status.HTTP_200_OK)
+                    else:
+                        return Response({'message': Messages.OTP_WRONG},
                                      status=status.HTTP_400_BAD_REQUEST)
             else:
                 return Response({'message': Messages.FIRST_VERIFY_EMAIL},
@@ -112,7 +116,7 @@ class LoginWithOTP(APIView):
 
 class SignIn(APIView):
     """This class is used for user signin"""
-    permission_classes = [AllowAny]
+    permission_classes = [AllowAny, ]
     def post(self, request):
             email = request.data.get('email')
             password = request.data.get('password')
@@ -148,21 +152,24 @@ class SignIn(APIView):
 from .serializers import UserSerializer
 class UsersView(APIView):
     """For get all users"""
-    permission_classes = [IsAdminUser, IsTokenValid]
+    #permission_classes = [IsAdminUser, IsTokenValid]
+    permission_classes = [AllowAny]
     def get(self,request):
         user_data = UserAccount.objects.all()
         serialize_data = UserSerializerForView(user_data, many=True)
-        return Response(serialize_data.data)
+        return Response(serialize_data.data, status=status.HTTP_200_OK)
 
 
 class UserLogout(APIView):
     """This class is used for user logout"""
+    permission_classes = [IsAuthenticated, IsTokenValid]
     def post(self,request):
         try:
-            token = request.auth.decode("utf-8")
-            BlackListedToken.objects.create(user=request.user, token=token)
-            return Response({'message': Messages.USER_LOGGED_OUT},
-                             status=status.HTTP_200_OK)
+            with transaction.atomic():
+                token = request.auth.decode("utf-8")
+                BlackListedToken.objects.create(user=request.user, token=token)
+                return Response({'message': Messages.USER_LOGGED_OUT},
+                                 status=status.HTTP_200_OK)
         except Exception as exception:
                 return Response({'error': str(exception)},
                                  status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -173,7 +180,7 @@ class ContactSupportQueryView(APIView):
     This class is used for get users query.
     Admin can access this class
     """
-    permission_classes = [IsAdminUser]
+    permission_classes = [IsAdminUser, ]
     def get(self,request):
         try:
             user_data = ContactSupport.objects.all()
@@ -184,16 +191,17 @@ class ContactSupportQueryView(APIView):
                                  status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-class ContactSupportQueryRegistered(APIView):
+class ContactSupportQueryRegister(APIView):
     """This class is used for saving users query"""
-    permission_classes = [AllowAny]
+    permission_classes = [AllowAny, ]
     def post(self, request):
         try:
-            serialize_data = ContactSupportSerializer(data=request.data)
-            if serialize_data.is_valid(raise_exception=True):
-                serialize_data.save()
-                return Response({"message": Messages.QUERY_SAVED},
-                                 status=status.HTTP_200_OK)
+            with transaction.atomic():
+                serialize_data = ContactSupportSerializer(data=request.data)
+                if serialize_data.is_valid(raise_exception=True):
+                    serialize_data.save()
+                    return Response({"message": Messages.QUERY_SAVED},
+                                     status=status.HTTP_200_OK)
         except Exception as exception:
                 return Response({'error': str(exception)},
                                  status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -224,7 +232,7 @@ def change_password(request, uidb64=None, token=None):
 
 class ForgotPassword(APIView):
     """send forgot password link to user"""
-    permission_classes = [AllowAny]
+    permission_classes = [AllowAny, ]
     def post(self, request):
         try:
             schema = {

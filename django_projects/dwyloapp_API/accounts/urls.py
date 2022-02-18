@@ -12,7 +12,7 @@ urlpatterns = [
     path('signin',account_view.SignIn.as_view()),
     path('logout',account_view.UserLogout.as_view()),
     path('contact-support-view',account_view.ContactSupportQueryView.as_view()),
-    path('contact-support-query',account_view.ContactSupportQueryRegistered.as_view()),
+    path('contact-support-query',account_view.ContactSupportQueryRegister.as_view()),
     path('forgot-password' ,account_view.ForgotPassword.as_view() , name="forgot_password"),
     path('change-password/<uidb64>/<token>/' , account_view.change_password , name="change_password"),
   ]
