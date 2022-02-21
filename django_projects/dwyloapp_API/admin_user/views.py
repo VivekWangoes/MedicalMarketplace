@@ -6,6 +6,7 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated,AllowAny
 from project.config import messages as Messages
 from cerberus import Validator
+from django.db import transaction
 # Create your views here.
 
 class AdminRegister(APIView):

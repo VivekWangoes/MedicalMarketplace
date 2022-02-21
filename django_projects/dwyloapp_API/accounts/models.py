@@ -7,6 +7,8 @@ from django.core.mail import send_mail
 from project.settings.dev import EMAIL_HOST_USER
 from datetime import datetime
 
+from core.models import Base
+
 
 class UserAccountManager(BaseUserManager):
     def create_user(self, email, name, mobile_no, password, role):
@@ -25,13 +27,12 @@ class UserAccountManager(BaseUserManager):
         user.is_superuser = True
         user.is_staff = True
         user.is_active = True
-        # user.role = UserAccount.SUPER_ADMIN
         user.set_password(password)
         user.save()
         return user
 
 
-class UserAccount(AbstractBaseUser, PermissionsMixin):
+class UserAccount(Base, AbstractBaseUser, PermissionsMixin):
     SUPER_ADMIN = 0
     DOCTOR = 1
     PATIENT = 2
@@ -88,7 +89,7 @@ class UserAccount(AbstractBaseUser, PermissionsMixin):
         return self.name
 
 
-class BlackListedToken(models.Model):
+class BlackListedToken(Base):
     token = models.CharField(max_length=500)
     user = models.ForeignKey(UserAccount, related_name="token_user", on_delete=models.CASCADE)
     timestamp = models.DateTimeField(auto_now=True)
@@ -97,7 +98,7 @@ class BlackListedToken(models.Model):
         return str(self.user)
 
 
-class ContactSupport(models.Model):
+class ContactSupport(Base, models.Model):
     name = models.CharField(max_length=150)
     email = models.EmailField(max_length=254)
     description = models.TextField()
@@ -105,28 +106,4 @@ class ContactSupport(models.Model):
 
     def __str__(self):
         return str(self.name)
-
-
-
-
-# @receiver(reset_password_token_created)
-# def password_reset_token_created(sender, instance, reset_password_token, *args, **kwargs):
-
-#     email_plaintext_message = "{}{}?token={}".format('http://127.0.0.1:8000/',reverse('password_reset:reset-password-request'), reset_password_token.key)
-
-#     send_mail(
-#         # title:
-#         "Password Reset for {title}".format(title="Your Account"),
-#         # message:
-#         email_plaintext_message,
-#         # from:
-#         EMAIL_HOST_USER,
-#         # to:
-#         [reset_password_token.user.email]
-#     )
-
-
-
-
-
 

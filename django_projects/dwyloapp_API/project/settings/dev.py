@@ -7,9 +7,9 @@ ALLOWED_HOSTS = []
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME': 'mydb', 
-        'USER': 'myuser', 
-        'PASSWORD': '1234',
+        'NAME': 'dwylo_app', 
+        'USER': 'dwylo_user', 
+        'PASSWORD': 'dwylo_pass',
         'HOST': '127.0.0.1', 
         'PORT': '',
     }

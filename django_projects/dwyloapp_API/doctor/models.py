@@ -1,9 +1,9 @@
 from django.db import models
 from accounts.models import UserAccount
-
+from core.models import Base
 # Create your models here.
 
-class DoctorProfile(models.Model):
+class DoctorProfile(Base, models.Model):
 	MALE = 'MALE'
 	FEMALE = 'FEMALE'
 	OTHER = 'OTHER'
@@ -31,7 +31,7 @@ class DoctorProfile(models.Model):
 		return str(self.doctor)
 
 
-class DoctorSlots(models.Model):
+class DoctorSlots(Base, models.Model):
 	slot_time = models.DateTimeField(blank=True, null=True)
 	is_booked = models.BooleanField(default=False)
 
@@ -39,7 +39,7 @@ class DoctorSlots(models.Model):
 		return str(self.slot_time)
 		
 
-class DoctorAvailability(models.Model):
+class DoctorAvailability(Base, models.Model):
 	MORNING = 'MORNING'
 	EVENING = 'EVENING'
 
@@ -59,7 +59,7 @@ class DoctorAvailability(models.Model):
 		return str(self.doctor)
 
 
-class DoctorReviews(models.Model):
+class DoctorReviews(Base, models.Model):
 	doctor_data = models.ForeignKey(DoctorProfile, on_delete=models.CASCADE)
 	user_data = models.ForeignKey(UserAccount, on_delete=models.CASCADE)
 	review = models.TextField()
@@ -68,7 +68,7 @@ class DoctorReviews(models.Model):
 	friendliness_rating = models.CharField(max_length=10, null=True, blank=True)
 
 
-class Appointments(models.Model):
+class Appointments(Base, models.Model):
 	COMPLETED = "COMPLETED"
 	UPCOMING = "UPCOMING"
 	CANCLE = "CANCLE"
