@@ -1,13 +1,8 @@
 from rest_framework import serializers
 from accounts.models import UserAccount
-from .models import DoctorProfile, DoctorAvailability, DoctorSlots, Appointments
+from .models import DoctorProfile, DoctorAvailability, DoctorSlots, Appointments, DoctorReviews
 from project.utility.send_otp_email import send_otp_to_email
 from django.db import transaction
-
-# class DoctorSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = UserAccount
-#         fields = '__all__'
 
 
 class DoctorSerializer(serializers.ModelSerializer):
@@ -28,10 +23,12 @@ class DoctorProfileSerializer(serializers.ModelSerializer):
         model = DoctorProfile
         fields = (
             'doctor',
+            'id',
             'doctor_pic',
             'gender',
             'career_started',
             'specialty',
+            'rating',
             'location_city',
             'clinic',
             'consultation_fees',
@@ -109,3 +106,34 @@ class ConfirmAppointmentsSerializer(serializers.ModelSerializer):
     class Meta:
         model = Appointments
         fields = '__all__'    
+
+
+from patient.serializers import PatientProfileSerializer
+class AppointmentsSerializer(serializers.ModelSerializer):
+    doctor = DoctorProfileSerializer()
+    patient = PatientProfileSerializer()
+    slot = DoctorSlotSerializer()
+    class Meta:
+        model = Appointments
+        fields = (
+            'id',
+            'doctor',
+            'patient',
+            'slot'
+        )
+
+
+class DoctorReviewsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DoctorReviews
+        fields = "__all__"
+
+    def update(self, instance, validated_data):
+        instance.prescription_rating = validated_data.get('prescription_rating',
+                                                          instance.prescription_rating)
+        instance.explanation_rating = validated_data.get('explanation_rating',
+                                                         instance.explanation_rating)
+        instance.friendliness_rating = validated_data.get('friendliness_rating',
+                                                          instance.friendliness_rating)
+        instance.save()
+        return instance

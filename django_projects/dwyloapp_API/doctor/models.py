@@ -1,6 +1,7 @@
 from django.db import models
 from accounts.models import UserAccount
 from core.models import Base
+from patient.models import PatientProfile
 # Create your models here.
 
 class DoctorProfile(Base, models.Model):
@@ -26,6 +27,7 @@ class DoctorProfile(Base, models.Model):
 	consultation_fees = models.IntegerField(blank=True, null=True)
 	expertise_area = models.TextField(blank=True, null=True)
 	verification = models.CharField(max_length=50, default=INCOMPLETED, blank=True, null=True)
+	rating = models.IntegerField(default=0)
 
 	def __str__(self):
 		return str(self.doctor)
@@ -60,12 +62,15 @@ class DoctorAvailability(Base, models.Model):
 
 
 class DoctorReviews(Base, models.Model):
-	doctor_data = models.ForeignKey(DoctorProfile, on_delete=models.CASCADE)
-	user_data = models.ForeignKey(UserAccount, on_delete=models.CASCADE)
+	doctor = models.ForeignKey(DoctorProfile, related_name='doctor_review', on_delete=models.CASCADE)
+	patient = models.ForeignKey(PatientProfile,  related_name='patient_review', on_delete=models.CASCADE, null=True, blank=True)
 	review = models.TextField()
 	prescription_rating = models.CharField(max_length=10, null=True, blank=True)
 	explanation_rating = models.CharField(max_length=10, null=True, blank=True)
 	friendliness_rating = models.CharField(max_length=10, null=True, blank=True)
+
+	def __str__(self):
+		return "%s %s"%(self.doctor, self.patient)
 
 
 class Appointments(Base, models.Model):
@@ -80,9 +85,9 @@ class Appointments(Base, models.Model):
 	)
 
 	doctor = models.ForeignKey(DoctorProfile, related_name="doctor_appointment", on_delete=models.CASCADE)
-	patient = models.ForeignKey(UserAccount, related_name="patient_appointment", on_delete=models.CASCADE)
+	patient = models.ForeignKey(PatientProfile, related_name="patient_appointment", on_delete=models.CASCADE)
 	slot = models.OneToOneField(DoctorSlots, related_name='doctor_slot', on_delete=models.CASCADE)
 	status = models.CharField(max_length=50, choices=STATUS_CHOICE, blank=True, null=True)
 
 	def __str__(self):
-		return "%s %s %s" % (self.doctor_id, self.patient_id, self.slot_id)
+		return "doctor %s patient %s slot %s" % (self.doctor, self.patient, self.slot)

@@ -9,7 +9,7 @@ from .models import PatientProfile, Alergies, Medication, Dieseas, Injuries,\
 class PatientSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserAccount
-        fields = ['email','name','mobile_no','role']
+        fields = ['id', 'email', 'name', 'mobile_no', 'role']
 
 
 class PatientProfileSerializer(serializers.ModelSerializer):
@@ -113,3 +113,5 @@ class PatientLifeStyleSerializer(serializers.ModelSerializer):
         instance.occupation = validated_data.get('occupation', instance.occupation)
         instance.save()
         return instance
+
+

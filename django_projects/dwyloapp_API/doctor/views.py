@@ -5,14 +5,14 @@ from rest_framework.permissions import IsAuthenticated,AllowAny
 from rest_framework import status
 from accounts.models import UserAccount
 from .serializers import DoctorSerializer, DoctorProfileSerializer,\
-     DoctorAvailabilitySerializer, ConfirmAppointmentsSerializer
+     DoctorAvailabilitySerializer, ConfirmAppointmentsSerializer, AppointmentsSerializer,\
+     DoctorReviewsSerializer
 from .permissions import IsDoctor, IsPatient, IsTokenValid
-from .models import DoctorProfile, DoctorAvailability, DoctorSlots, Appointments
+from .models import DoctorProfile, DoctorAvailability, DoctorSlots, Appointments, DoctorReviews
 from datetime import datetime, timedelta, timezone
 from cerberus import Validator
-from project.config import messages as Messages
+from project.config.messages import Messages
 from project.utility.send_otp_email import send_otp_to_email
-#from pytz import timezone 
 from django.db import IntegrityError, transaction
 import calendar
 # Create your views here.
@@ -59,8 +59,7 @@ class DoctorRegister(APIView):
                 return Response({'error': str(exception)},
                                  status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-from rest_framework.decorators import parser_classes
-from rest_framework.parsers import FileUploadParser
+
 class DoctorProfileView(APIView):
     """This class is used for get and update doctor profile"""
     permission_classes = [IsDoctor, IsTokenValid]
@@ -98,12 +97,6 @@ class DoctorProfileView(APIView):
         except Exception as exception:
                 return Response({'error': str(exception)},
                                  status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-
-months = {'January':1, 'February':2,'March':3,'April':4,'May':5,'June':6,
-                        'July':7,'August':8,'September':9,'October':10,'November':11,
-                        'December':12}
 
 
 class DoctorAvailabilitySet(APIView):
@@ -154,7 +147,7 @@ class DoctorSearchBySpecialty(APIView):
     def get(self, request):
         try:
             doctor_data = DoctorProfile.objects.filter(
-                        specialty__iexact=request.data.get('specialty'))
+                          specialty__iexact=request.data.get('specialty'))
             serialize_data = DoctorProfileSerializer(doctor_data, many=True).data
             serialize_data1 = serialize_data
             next_availability = {}
@@ -231,14 +224,11 @@ class DoctorSearchByDoctors(APIView):
     def get(self, request):
         try:
             doctor_data = DoctorProfile.objects.filter(doctor__name__icontains=request.data.get('name'))
-            print(doctor_data)
             serialize_data = DoctorProfileSerializer(doctor_data, many=True).data
             serialize_data1 = serialize_data
             next_availability = {}
-            print(serialize_data,)
             for count, data in enumerate(serialize_data):
                 doctor_user = UserAccount.objects.get(email=data['doctor']['email'])
-                print('doctor_user', doctor_user, doctor_user.doctor_profile)
                 slots = DoctorSlots.objects.filter(doctoravailability__doctor=doctor_user.doctor_profile,
                                                    slot_time__gte=datetime.utcnow(),
                                                    is_booked=False).order_by('slot_time')
@@ -257,18 +247,16 @@ class DoctorSearchByDoctors(APIView):
 class DoctorAvailabilityProfile(APIView):
     """for getting particular doctor availabilities"""
     permission_classes = [IsPatient, IsTokenValid]
-    def get(self, request):
+    def post(self, request):
         try:
             doctor_data = DoctorProfile.objects.get(doctor__id=request.data.get('id'))
             serialize_data = DoctorProfileSerializer(doctor_data).data
             serialize_data1 = serialize_data
-    
             today_slots = DoctorAvailability.objects.filter(doctor=doctor_data,
                                                             time_slot__slot_time__date=datetime.utcnow().date(),
                                                             time_slot__slot_time__gte=datetime.utcnow(),
                                                             time_slot__is_booked=False).order_by('time_slot__slot_time')
             
-            print(today_slots)
             serialize_data1['today_availability'] = DoctorAvailabilitySerializer(today_slots, many=True).data
             return Response(serialize_data, status=status.HTTP_200_OK)
 
@@ -278,7 +266,7 @@ class DoctorAvailabilityProfile(APIView):
 
 
 class DoctorAvailabilityTimeSlot(APIView):
-    """for search slots of particular doctor """
+    """for search  particular doctor slots """
     permission_classes = [IsPatient, IsTokenValid]
     def post(self, request):
         try:
@@ -291,14 +279,12 @@ class DoctorAvailabilityTimeSlot(APIView):
                                                                 time_slot__slot_time__date=datetime.utcnow().date(),
                                                                 time_slot__slot_time__gte=datetime.utcnow(),
                                                                 time_slot__is_booked=False).order_by('time_slot__slot_time')
-                print(today_slots)
                 serialize_data1['today_availability'] = DoctorAvailabilitySerializer(today_slots, many=True).data
             else:
                 today_slots = DoctorAvailability.objects.filter(doctor=doctor_data,
                                                                 time_slot__slot_time__date=datetime(datetime.utcnow().year,
                                                                                                     datetime.utcnow().month, int(date), tzinfo=timezone.utc),
                                                                 time_slot__is_booked=False).order_by('time_slot__slot_time')
-                print(today_slots)
                 serialize_data1['today_availability'] = DoctorAvailabilitySerializer(today_slots, many=True).data
 
             return Response(serialize_data, status=status.HTTP_200_OK)
@@ -314,22 +300,125 @@ class ConfirmAppointmentsView(APIView):
     def post(self, request):
         try:
             doctor_obj = UserAccount.objects.get(id=request.data.get('doctor_id'))
-            patient_obj = UserAccount.objects.get(id=request.user.id)
             slot_obj = DoctorSlots.objects.get(id=request.data.get('slot_id'))
             request.data._mutable = True
             request.data['doctor'] = doctor_obj.doctor_profile.id
-            request.data['patient'] = patient_obj.id
+            request.data['patient'] = request.user.patient_profile.id
             request.data['slot'] = slot_obj.id
             request.data['status'] = 'UPCOMING'
             request.data._mutable = True
             with transaction.atomic():
                 serialize_data = ConfirmAppointmentsSerializer(data=request.data)
                 if serialize_data.is_valid(raise_exception=True):
-                    slot_obj.status = True
-                    slot_obj.save()
                     serialize_data.save()
+                    slot_obj.is_booked = True
+                    slot_obj.save()
                     return Response({"message": Messages.APPOINTMENT_CONFIRMED},
                                      status=status.HTTP_200_OK)
         except Exception as exception:
             return Response({"error": str(exception)},
                              status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class UpcomingAppointments(APIView):
+    """for getting upcoming appointments"""
+    permission_classes = [IsPatient, IsTokenValid]
+    def get(self, request):
+        try:
+            appointment_data = Appointments.objects.filter(status="UPCOMING")
+            serialize_data = AppointmentsSerializer(appointment_data, many=True).data
+            return Response(serialize_data, status=status.HTTP_200_OK)
+        except Exception as exception:
+            return Response({"error": str(exception)},
+                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class CompletedAppointments(APIView):
+    """for getting upcoming appointments"""
+    permission_classes = [IsPatient, IsTokenValid]
+    def get(self, request):
+        try:
+            appointment_data = Appointments.objects.filter(status="COMPLETED")
+            serialize_data = AppointmentsSerializer(appointment_data, many=True).data
+            return Response(serialize_data, status=status.HTTP_200_OK)
+        except Exception as exception:
+            return Response({"error": str(exception)},
+                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class CancleAppointment(APIView):
+    """for cancle appointment"""
+    permission_classes = [IsPatient, IsTokenValid]
+    def post(self, request, id):
+        try:
+            appointment_obj = Appointments.objects.filter(id=id, status='UPCOMING').first()
+            if appointment_obj:
+                appointment_obj.status = "CANCLE"
+                appointment_obj.save()
+                slot_obj = appointment_obj.slot
+                slot_obj.is_booked = False
+                slot_obj.save()
+            else:
+                return Response({"message":Messages.APPOINTMENT_NOT_EXIST}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"message":Messages.APPOINTMENT_CANCLE}, status=status.HTTP_200_OK)
+        except Exception as exception:
+            return Response({"error": str(exception)},
+                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class DoctorReview(APIView):
+    """write review by patient to doctor"""
+    permission_classes = [IsPatient, IsTokenValid]
+    def get(self, request):
+        try:
+            review_data  = DoctorReviews.objects.filter(doctor=request.data.get('doctor_id'))
+            serialize_data = DoctorReviewsSerializer(review_data, many=True).data
+            return Response(serialize_data, status=status.HTTP_200_OK)
+        except Exception as exception:
+            return Response({"error": str(exception)},
+                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def post(self, request):
+        try:
+            request.data._mutable = True
+            profile_obj = DoctorProfile.objects.filter(id=request.data.get('doctor_id')).first()
+            if not profile_obj:
+                return Response({"message":Messages.USER_NOT_EXISTS}, status=status.HTTP_404_NOT_FOUND)
+            request.data['doctor'] = profile_obj.id
+            request.data['patient'] = request.user.patient_profile.id
+            request.data._mutable = False
+            serialize_data = DoctorReviewsSerializer(data=request.data)
+            if serialize_data.is_valid(raise_exception=True):
+                review_obj = serialize_data.save()
+                total_rating = int(review_obj.prescription_rating) + int(review_obj.explanation_rating)\
+                             + int(review_obj.friendliness_rating) 
+                avg_rating = total_rating // 3
+                profile_obj.rating = avg_rating
+                profile_obj.save()
+                return Response({"message":Messages.REVIEW_SAVED}, status=status.HTTP_200_OK)
+        except Exception as exception:
+            return Response({"error": str(exception)},
+                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def put(self, request):
+        try:
+            review_obj = DoctorReviews.objects.filter(id=request.data.get('review_id')).first()
+            if not review_obj:
+                return Response({"message":Messages.USER_NOT_EXISTS}, status=status.HTTP_404_NOT_FOUND)
+            serialize_data = DoctorReviewsSerializer(instance=review_obj,
+                                                     data=request.data, partial=True)
+            if serialize_data.is_valid(raise_exception=True):
+                serialize_data.save()
+                serialize_data = serialize_data.data
+                doctor_profile_obj = DoctorProfile.objects.filter(id=request.data.get('doctor_id')).first()
+                if not doctor_profile_obj:
+                    return Response({"message":Messages.USER_NOT_EXISTS}, status=status.HTTP_404_NOT_FOUND)
+                total_rating = int(serialize_data['prescription_rating']) + int(serialize_data['explanation_rating'])\
+                             + int(serialize_data['friendliness_rating']) 
+                avg_rating = total_rating // 3
+                doctor_profile_obj.rating = avg_rating
+                doctor_profile_obj.save()
+                return Response({"message":Messages.REVIEW_UPDATE}, status=status.HTTP_200_OK)
+        except Exception as exception:
+            return Response({"error": str(exception)},
+                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+           

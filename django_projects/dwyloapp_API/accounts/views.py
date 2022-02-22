@@ -22,7 +22,7 @@ from django.contrib import messages
 from django.template.loader import render_to_string
 from django.contrib.sites.shortcuts import get_current_site
 from project.utility.send_otp_email import send_otp_to_email
-from project.config import messages as Messages
+from project.config.messages import Messages
 from datetime import datetime
 from django.db import transaction
 
