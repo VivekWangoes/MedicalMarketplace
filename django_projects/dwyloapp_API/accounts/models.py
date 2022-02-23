@@ -66,7 +66,7 @@ class UserAccount(Base, AbstractBaseUser, PermissionsMixin):
     email = models.EmailField(max_length=254, unique=True)
     name = models.CharField(max_length=150)
     otp = models.CharField(max_length=5,null=True, blank=True)
-    otp_created = models.DateTimeField(default=datetime.now(),blank=True,null=True)
+    otp_created = models.DateTimeField(default=datetime.now,blank=True,null=True)
     mobile_no = models.CharField(max_length=12)
     last_name = models.CharField(max_length=150, null=True, blank=True, default="")
     is_staff = models.BooleanField(default=False)
