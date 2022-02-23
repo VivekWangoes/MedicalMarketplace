@@ -16,4 +16,9 @@ urlpatterns = [
     path('availability-profile',doctor_view.DoctorAvailabilityProfile.as_view()),
     path('availability-timeslot',doctor_view.DoctorAvailabilityTimeSlot.as_view()),
     path('confirm-appointment',doctor_view.ConfirmAppointmentsView.as_view()),
+    path('upcoming-appointment',doctor_view.UpcomingAppointments.as_view()),
+    path('completed-appointment',doctor_view.CompletedAppointments.as_view()),
+    path('cancle-appointment/<uuid:id>/',doctor_view.CancleAppointment.as_view()),
+    path('write-review',doctor_view.DoctorReview.as_view()),
+    
   ]
