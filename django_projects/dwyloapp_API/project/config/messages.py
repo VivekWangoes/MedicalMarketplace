@@ -12,7 +12,7 @@ class Messages:
 	FIRST_VERIFY_EMAIL = "First verify your email"
 	INVALID_CREDENTIAL = "Invalid credentials username password wrong"
 	QUERY_SAVED = "Your query saved successfully"
-	ACCOUNT_CREATED = "Account created successfully "
+	ACCOUNT_CREATED = "Account created successfully"
 	PROFILE_CREATED = "Your profile created successfully"
 	PROFILE_UPDATED = "Your profile updated successfully"
 	INFO_CREATED = "Your information created successfully"
@@ -27,4 +27,6 @@ class Messages:
 	APPOINTMENT_NOT_EXIST = "Appointment not exists"
 	REVIEW_SAVED = "Your review saved successfully"
 	REVIEW_UPDATE = "Your review update successfully"
+	ALREADY_WRITTEN = "You have already given review"
+	INVALID_TIME = "Please give valid time"
 

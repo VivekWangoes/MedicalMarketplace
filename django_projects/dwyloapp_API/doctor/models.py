@@ -28,6 +28,7 @@ class DoctorProfile(Base, models.Model):
 	expertise_area = models.TextField(blank=True, null=True)
 	verification = models.CharField(max_length=50, default=INCOMPLETED, blank=True, null=True)
 	rating = models.IntegerField(default=0)
+	booking_fees = models.IntegerField(blank=True, null=True)
 
 	def __str__(self):
 		return str(self.doctor)
@@ -55,7 +56,6 @@ class DoctorAvailability(Base, models.Model):
 	day = models.CharField(max_length=50, blank=True, null=True)
 	slot = models.CharField(max_length=50, choices=SLOT_TIME, blank=True, null=True)
 	time_slot = models.ManyToManyField(DoctorSlots)
-	#daily = models.BooleanField(default=False)
 
 	def __str__(self):
 		return str(self.doctor)

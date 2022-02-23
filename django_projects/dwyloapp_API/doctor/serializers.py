@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from accounts.models import UserAccount
 from .models import DoctorProfile, DoctorAvailability, DoctorSlots, Appointments, DoctorReviews
-from project.utility.send_otp_email import send_otp_to_email
+from project.utility.send_otp_email import send_otp_email_verify
 from django.db import transaction
 
 
@@ -13,7 +13,8 @@ class DoctorSerializer(serializers.ModelSerializer):
             'email',
             'name',
             'mobile_no',
-            'role'
+            'role',
+            'offer'
         )
 
 
@@ -32,7 +33,8 @@ class DoctorProfileSerializer(serializers.ModelSerializer):
             'location_city',
             'clinic',
             'consultation_fees',
-            'expertise_area'
+            'expertise_area',
+            'booking_fees'
         )
 
     def update(self, instance, validated_data):
@@ -44,7 +46,7 @@ class DoctorProfileSerializer(serializers.ModelSerializer):
             instance.mobile_no = doctor_data.get('mobile_no', instance.mobile_no)
             if doctor_data.get('email'):
                 instance.is_email_verified = False
-                send_otp_to_email(doctor_data.get('email'), instance)
+                send_otp_email_verify(doctor_data.get('email'), instance)
             instance.save()
             if validated_data:
                 try:
@@ -119,7 +121,8 @@ class AppointmentsSerializer(serializers.ModelSerializer):
             'id',
             'doctor',
             'patient',
-            'slot'
+            'slot',
+
         )
 
 

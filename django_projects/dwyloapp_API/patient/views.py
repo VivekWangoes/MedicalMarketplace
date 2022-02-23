@@ -11,10 +11,11 @@ from .models import PatientProfile, Alergies, Medication, Dieseas, Injuries,\
 from django.db import transaction
 from .serializers import PatientProfileSerializer, PatientMedicalProfileSerializer,\
      PatientLifeStyleSerializer, AlergiesSerializer, MedicationSerializer,\
-     DieseasSerializer, InjuriesSerializer, SurgerySerializer
+     DieseasSerializer, InjuriesSerializer, SurgerySerializer, PatientCompleteProfileSerializer
 from .permissions import IsPatient, IsTokenValid
 from accounts.models import UserAccount
-from project.utility.send_otp_email import send_otp_to_email
+from project.utility.send_otp_email import send_otp_email_verify
+import math
 # Create your views here.
 
 
@@ -28,6 +29,7 @@ class PatientRegister(APIView):
                     "name": {'type':'string', 'required': True, 'empty': False},
                     "mobile_no": {'type':'string', 'required': True, 'empty': False},
                     "password": {'type':'string', 'required': True, 'empty': False},
+                    "offer": {'type':'string', 'required': False, 'empty': True},
                     "patient_profile": {'type':'dict', 'required': False, 'empty': True},
             }
             v = Validator()
@@ -54,7 +56,7 @@ class PatientRegister(APIView):
                 medical_profile.save()
                 life_style_obj = PatientLifeStyle.objects.create(patient=patient_profile_obj)
                 life_style_obj.save()
-                send_otp_to_email(user_obj.email, user_obj)
+                send_otp_email_verify(user_obj.email, user_obj)
             return Response({'message': Messages.ACCOUNT_CREATED},
                              status = status.HTTP_200_OK)
         except Exception as exception:
@@ -188,3 +190,19 @@ class PatientLifeStyleView(APIView):
                 return Response({'error': str(exception)},
                                  status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+class PatientCompleteProfile(APIView):
+    """patient complete profile update"""
+    permission_classes = [IsPatient, IsAuthenticated]
+    def get(self, request):
+        serialize_data = PatientCompleteProfileSerializer(request.user.patient_profile).data
+        patient_profile = [key for key in serialize_data if serialize_data[key] is not None]
+        patient = dict(serialize_data['patient'])
+        patient = [key for key in patient if patient[key] is not None]
+        medical_profile = dict(serialize_data['patient_medical_profile'])
+        medical_profile = [key for key in medical_profile if medical_profile[key] is not None and medical_profile[key]]
+        life_style = dict(serialize_data['patient_life_style'])
+        life_style = [key for key in life_style if life_style[key] is not None]
+        complete_fields = (len(patient_profile)-3) + (len(patient)-1) + (len(medical_profile)-4) + (len(life_style)-4) 
+        percentage = math.ceil((complete_fields / 25) * 100)
+        serialize_data['complete_profile'] = str(percentage) + "%"
+        return Response(serialize_data, status=status.HTTP_200_OK)

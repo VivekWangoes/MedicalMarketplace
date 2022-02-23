@@ -7,7 +7,7 @@ from doctor import views as doctor_view
 
 urlpatterns = [
     path('register',doctor_view.DoctorRegister.as_view()),
-    path('profile',doctor_view.DoctorProfileView.as_view()),
+    path('profile-update',doctor_view.DoctorProfileView.as_view()),
     path('search-by-speciality',doctor_view.DoctorSearchBySpecialty.as_view()),
     path('search-by-clinic',doctor_view.DoctorSearchByClinic.as_view()),
     path('search-by-healthconcern',doctor_view.DoctorSearchByHealthConcern.as_view()),

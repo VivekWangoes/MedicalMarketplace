@@ -12,7 +12,7 @@ from .models import DoctorProfile, DoctorAvailability, DoctorSlots, Appointments
 from datetime import datetime, timedelta, timezone
 from cerberus import Validator
 from project.config.messages import Messages
-from project.utility.send_otp_email import send_otp_to_email
+from project.utility.send_otp_email import send_otp_email_verify
 from django.db import IntegrityError, transaction
 import calendar
 # Create your views here.
@@ -28,6 +28,7 @@ class DoctorRegister(APIView):
                     "name": {'type':'string', 'required': True, 'empty': False},
                     "mobile_no": {'type':'string', 'required': True, 'empty': False},
                     "password": {'type':'string', 'required': True, 'empty': False},
+                    "offer": {'type':'string', 'required': False, 'empty': True},
                     "doctor_profile": {'type':'dict', 'required': False, 'empty': True},
             }
             v = Validator()
@@ -51,7 +52,7 @@ class DoctorRegister(APIView):
                                                               consultation_fees=doctor_profile.get('consultation_fees'),
                                                               expertise_area=doctor_profile.get('expertise_area'))
                 doctor_profile.save()
-                send_otp_to_email(user.email, user)
+                send_otp_email_verify(user.email, user)
                 return Response({'message': Messages.ACCOUNT_CREATED},
                                  status=status.HTTP_200_OK)
         except Exception as exception:
@@ -68,7 +69,6 @@ class DoctorProfileView(APIView):
         return Response(serialize_data.data, status=status.HTTP_200_OK)
 
     def put(self, request):
-        parser_classes = [FileUploadParser]
         try:
             serialize_data = DoctorProfileSerializer(instance=request.user,
                                                      data=request.data,
@@ -117,13 +117,18 @@ class DoctorAvailabilitySet(APIView):
 
 
             slots = DoctorAvailability.objects.filter(doctor=request.user.doctor_profile,
-                                                      slot_date=request.data.get('slot_date')).filter(time_slot__slot_time__in=request.data.get('slot_time'))
-            print(slots)
+                                                      slot_date=request.data.get('slot_date')).\
+                                                      filter(time_slot__slot_time__in=request.data.get('slot_time'))
             if slots:
                 return Response({'message': Messages.ALREADY_DATETIME_PRESENT},
                                  status=status.HTTP_409_CONFLICT) 
             with transaction.atomic():
                 for slot in request.data.get('slot_time'):
+                    current_time  = datetime.now()
+                    set_time = datetime.strptime(slot,"%Y-%m-%d %H:%M:%S")
+                    if set_time <= current_time:
+                        return Response({'message': Messages.INVALID_TIME},
+                                 status=status.HTTP_400_BAD_REQUEST)
                     doctor_slot = DoctorSlots.objects.create(slot_time=slot)
                     doctor_slot.save()
                     available = DoctorAvailability.objects.create(doctor=request.user.doctor_profile,
@@ -249,7 +254,10 @@ class DoctorAvailabilityProfile(APIView):
     permission_classes = [IsPatient, IsTokenValid]
     def post(self, request):
         try:
-            doctor_data = DoctorProfile.objects.get(doctor__id=request.data.get('id'))
+            doctor_data = DoctorProfile.objects.filter(doctor__id=request.data.get('doctor_id')).first()
+            if not doctor_data:
+                return Response({"message": Messages.USER_NOT_EXISTS},
+                                 status=status.HTTP_404_NOT_FOUND)
             serialize_data = DoctorProfileSerializer(doctor_data).data
             serialize_data1 = serialize_data
             today_slots = DoctorAvailability.objects.filter(doctor=doctor_data,
@@ -270,7 +278,10 @@ class DoctorAvailabilityTimeSlot(APIView):
     permission_classes = [IsPatient, IsTokenValid]
     def post(self, request):
         try:
-            doctor_data = DoctorProfile.objects.get(doctor__id=request.data.get('id'))
+            doctor_data = DoctorProfile.objects.filter(doctor__id=request.data.get('doctor_id')).first()
+            if not doctor_data:
+                return Response({"message": Messages.USER_NOT_EXISTS},
+                                 status=status.HTTP_404_NOT_FOUND)
             serialize_data = DoctorProfileSerializer(doctor_data).data
             serialize_data1 = serialize_data
             date = request.data.get('date')
@@ -325,7 +336,8 @@ class UpcomingAppointments(APIView):
     permission_classes = [IsPatient, IsTokenValid]
     def get(self, request):
         try:
-            appointment_data = Appointments.objects.filter(status="UPCOMING")
+            appointment_data = Appointments.objects.filter(patient=request.user.patient_profile,
+                                                           status="UPCOMING")
             serialize_data = AppointmentsSerializer(appointment_data, many=True).data
             return Response(serialize_data, status=status.HTTP_200_OK)
         except Exception as exception:
@@ -338,7 +350,9 @@ class CompletedAppointments(APIView):
     permission_classes = [IsPatient, IsTokenValid]
     def get(self, request):
         try:
-            appointment_data = Appointments.objects.filter(status="COMPLETED")
+            print(request.user.patient_profile)
+            appointment_data = Appointments.objects.filter(patient=request.user.patient_profile,
+                                                           status="COMPLETED")
             serialize_data = AppointmentsSerializer(appointment_data, many=True).data
             return Response(serialize_data, status=status.HTTP_200_OK)
         except Exception as exception:
@@ -383,6 +397,9 @@ class DoctorReview(APIView):
             profile_obj = DoctorProfile.objects.filter(id=request.data.get('doctor_id')).first()
             if not profile_obj:
                 return Response({"message":Messages.USER_NOT_EXISTS}, status=status.HTTP_404_NOT_FOUND)
+            profile_obj = PatientProfile.objects.filter(id=request.user.patient_profile.id).first()
+            if profile_obj:
+                return Response({"message":Messages.ALREADY_WRITTEN}, status=status.HTTP_208_ALREADY_REPORTED)
             request.data['doctor'] = profile_obj.id
             request.data['patient'] = request.user.patient_profile.id
             request.data._mutable = False

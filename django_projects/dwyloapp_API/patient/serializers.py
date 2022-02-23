@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from accounts.models import UserAccount
-from accounts.views import send_otp_to_email
-from project.utility.send_otp_email import send_otp_to_email
+from accounts.views import send_otp_email_verify
+from project.utility.send_otp_email import send_otp_email_verify
 from django.db import transaction
 from .models import PatientProfile, Alergies, Medication, Dieseas, Injuries,\
       Surgery, PatientMedicalProfile, PatientLifeStyle
@@ -9,7 +9,7 @@ from .models import PatientProfile, Alergies, Medication, Dieseas, Injuries,\
 class PatientSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserAccount
-        fields = ['id', 'email', 'name', 'mobile_no', 'role']
+        fields = ['id', 'email', 'name', 'mobile_no', 'role', 'offer']
 
 
 class PatientProfileSerializer(serializers.ModelSerializer):
@@ -24,7 +24,7 @@ class PatientProfileSerializer(serializers.ModelSerializer):
             'emergency_contact_name',
             'emergency_contact_relation',
             'emergency_contact_phone',
-            'location'
+            'location',
         )
 
     def update(self, instance, validated_data):
@@ -34,7 +34,7 @@ class PatientProfileSerializer(serializers.ModelSerializer):
         instance.mobile_no = patient_data.get('mobile_no', instance.mobile_no)
         if patient_data.get('email'):
             instance.is_email_verified = False
-            send_otp_to_email(patient_data.get('email'), instance)
+            send_otp_email_verify(patient_data.get('email'), instance)
         instance.save()
         if validated_data:
             try:
@@ -115,3 +115,21 @@ class PatientLifeStyleSerializer(serializers.ModelSerializer):
         return instance
 
 
+class PatientCompleteProfileSerializer(serializers.ModelSerializer):
+    patient = PatientSerializer()
+    patient_medical_profile = PatientMedicalProfileSerializer()
+    patient_life_style = PatientLifeStyleSerializer()
+    class Meta:
+        model  = PatientProfile
+        fields = (
+            'patient',
+            'patient_medical_profile',
+            'patient_life_style',
+            'patient_pic',
+            'gender',
+            'dob',
+            'emergency_contact_name',
+            'emergency_contact_relation',
+            'emergency_contact_phone',
+            'location'
+        )

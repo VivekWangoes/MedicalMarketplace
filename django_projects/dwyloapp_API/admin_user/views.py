@@ -11,7 +11,7 @@ from django.db import transaction
 
 class AdminRegister(APIView):
     """This class is used for Admin register """
-    permission_classes = [AllowAny]
+    permission_classes = [AllowAny, ]
     def post(self,request):
         try:
             with transaction.atomic():
@@ -19,7 +19,8 @@ class AdminRegister(APIView):
                         "email": {'type':'string', 'required': True, 'empty': False},
                         "name": {'type':'string', 'required': True, 'empty': False},
                         "mobile_no": {'type':'string', 'required': True, 'empty': False},
-                        "password": {'type':'string', 'required': True, 'empty': False}
+                        "password": {'type':'string', 'required': True, 'empty': False},
+                        "offer": {'type':'string', 'required': False, 'empty': True}
                 }
                 v = Validator()
                 if not v.validate(request.data, schema):
