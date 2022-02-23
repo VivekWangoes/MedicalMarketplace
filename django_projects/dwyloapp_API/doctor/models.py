@@ -30,6 +30,10 @@ class DoctorProfile(Base, models.Model):
 	def __str__(self):
 		return str(self.doctor)
 
+	def save(self, *args, **kwargs):
+		self.full_clean()
+		super().save(*args, **kwargs)
+
 
 class DoctorSlots(Base, models.Model):
 	slot_time = models.DateTimeField(blank=True, null=True)

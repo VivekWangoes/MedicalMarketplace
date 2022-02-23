@@ -23,7 +23,7 @@ class UserAccountManager(BaseUserManager):
 
     def create_superuser(self, email, name, mobile_no, password, role):
         print("super user")
-        user = self.create_user(email, name, mobile_no, password,role)
+        user = self.create_user(email, name, mobile_no, password, role)
         user.is_superuser = True
         user.is_staff = True
         user.is_active = True
@@ -88,6 +88,10 @@ class UserAccount(Base, AbstractBaseUser, PermissionsMixin):
     def get_short_name(self):
         return self.name
 
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
 
 class BlackListedToken(Base):
     token = models.CharField(max_length=500)
@@ -98,7 +102,7 @@ class BlackListedToken(Base):
         return str(self.user)
 
 
-class ContactSupport(Base, models.Model):
+class ContactSupport(Base):
     name = models.CharField(max_length=150)
     email = models.EmailField(max_length=254)
     description = models.TextField()
