@@ -8,7 +8,7 @@ from .serializers import DoctorSerializer, DoctorProfileSerializer,\
      DoctorAvailabilitySerializer, ConfirmAppointmentsSerializer, AppointmentsSerializer,\
      DoctorReviewsSerializer
 from .permissions import IsDoctor, IsPatient, IsTokenValid
-from .models import DoctorProfile, DoctorAvailability, DoctorSlots, Appointments, DoctorReviews
+from .models import DoctorProfile, DoctorAvailability, DoctorSlot, Appointment, DoctorReview
 from datetime import datetime, timedelta, timezone
 from cerberus import Validator
 from project.config.messages import Messages
@@ -124,7 +124,7 @@ class DoctorAvailabilitySet(APIView):
                                  status=status.HTTP_409_CONFLICT) 
             with transaction.atomic():
                 for slot in request.data.get('slot_time'):
-                    doctor_slot = DoctorSlots.objects.create(slot_time=slot)
+                    doctor_slot = DoctorSlot.objects.create(slot_time=slot)
                     doctor_slot.save()
                     available = DoctorAvailability.objects.create(doctor=request.user.doctor_profile,
                                                                   slot_date=request.data.get('slot_date'),
@@ -153,7 +153,7 @@ class DoctorSearchBySpecialty(APIView):
             next_availability = {}
             for count, data in enumerate(serialize_data):
                 doctor_user = UserAccount.objects.get(email=data['doctor']['email'])
-                slots = DoctorSlots.objects.filter(doctoravailability__doctor=doctor_user.doctor_profile,
+                slots = DoctorSlot.objects.filter(doctoravailability__doctor=doctor_user.doctor_profile,
                                                    slot_time__gte=datetime.utcnow(),
                                                    is_booked=False).order_by('slot_time')
                 
@@ -178,7 +178,7 @@ class DoctorSearchByClinic(APIView):
             next_availability = {}
             for count, data in enumerate(serialize_data):
                 doctor_user = UserAccount.objects.get(email=data['doctor']['email'])
-                slots = DoctorSlots.objects.filter(doctoravailability__doctor=doctor_user.doctor_profile,
+                slots = DoctorSlot.objects.filter(doctoravailability__doctor=doctor_user.doctor_profile,
                                                    slot_time__gte=datetime.utcnow(),
                                                    is_booked=False).order_by('slot_time')
                 
@@ -204,7 +204,7 @@ class DoctorSearchByHealthConcern(APIView):
             next_availability = {}
             for count, data in enumerate(serialize_data):
                 doctor_user = UserAccount.objects.get(email=data['doctor']['email'])
-                slots = DoctorSlots.objects.filter(doctoravailability__doctor=doctor_user.doctor_profile,
+                slots = DoctorSlot.objects.filter(doctoravailability__doctor=doctor_user.doctor_profile,
                                                    slot_time__gte=datetime.utcnow(),
                                                    is_booked=False).order_by('slot_time')
                 
@@ -229,7 +229,7 @@ class DoctorSearchByDoctors(APIView):
             next_availability = {}
             for count, data in enumerate(serialize_data):
                 doctor_user = UserAccount.objects.get(email=data['doctor']['email'])
-                slots = DoctorSlots.objects.filter(doctoravailability__doctor=doctor_user.doctor_profile,
+                slots = DoctorSlot.objects.filter(doctoravailability__doctor=doctor_user.doctor_profile,
                                                    slot_time__gte=datetime.utcnow(),
                                                    is_booked=False).order_by('slot_time')
                 
@@ -300,7 +300,7 @@ class ConfirmAppointmentsView(APIView):
     def post(self, request):
         try:
             doctor_obj = UserAccount.objects.get(id=request.data.get('doctor_id'))
-            slot_obj = DoctorSlots.objects.get(id=request.data.get('slot_id'))
+            slot_obj = DoctorSlot.objects.get(id=request.data.get('slot_id'))
             request.data._mutable = True
             request.data['doctor'] = doctor_obj.doctor_profile.id
             request.data['patient'] = request.user.patient_profile.id
@@ -325,7 +325,7 @@ class UpcomingAppointments(APIView):
     permission_classes = [IsPatient, IsTokenValid]
     def get(self, request):
         try:
-            appointment_data = Appointments.objects.filter(status="UPCOMING")
+            appointment_data = Appointment.objects.filter(status="UPCOMING")
             serialize_data = AppointmentsSerializer(appointment_data, many=True).data
             return Response(serialize_data, status=status.HTTP_200_OK)
         except Exception as exception:
@@ -338,7 +338,7 @@ class CompletedAppointments(APIView):
     permission_classes = [IsPatient, IsTokenValid]
     def get(self, request):
         try:
-            appointment_data = Appointments.objects.filter(status="COMPLETED")
+            appointment_data = Appointment.objects.filter(status="COMPLETED")
             serialize_data = AppointmentsSerializer(appointment_data, many=True).data
             return Response(serialize_data, status=status.HTTP_200_OK)
         except Exception as exception:
@@ -351,7 +351,7 @@ class CancleAppointment(APIView):
     permission_classes = [IsPatient, IsTokenValid]
     def post(self, request, id):
         try:
-            appointment_obj = Appointments.objects.filter(id=id, status='UPCOMING').first()
+            appointment_obj = Appointment.objects.filter(id=id, status='UPCOMING').first()
             if appointment_obj:
                 appointment_obj.status = "CANCLE"
                 appointment_obj.save()
@@ -370,7 +370,7 @@ class DoctorReview(APIView):
     permission_classes = [IsPatient, IsTokenValid]
     def get(self, request):
         try:
-            review_data  = DoctorReviews.objects.filter(doctor=request.data.get('doctor_id'))
+            review_data  = DoctorReview.objects.filter(doctor=request.data.get('doctor_id'))
             serialize_data = DoctorReviewsSerializer(review_data, many=True).data
             return Response(serialize_data, status=status.HTTP_200_OK)
         except Exception as exception:
@@ -401,7 +401,7 @@ class DoctorReview(APIView):
 
     def put(self, request):
         try:
-            review_obj = DoctorReviews.objects.filter(id=request.data.get('review_id')).first()
+            review_obj = DoctorReview.objects.filter(id=request.data.get('review_id')).first()
             if not review_obj:
                 return Response({"message":Messages.USER_NOT_EXISTS}, status=status.HTTP_404_NOT_FOUND)
             serialize_data = DoctorReviewsSerializer(instance=review_obj,
