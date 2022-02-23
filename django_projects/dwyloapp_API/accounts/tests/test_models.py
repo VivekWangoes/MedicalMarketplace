@@ -32,7 +32,6 @@ class BaseTestCase(TestCase):
 		return contactsupport
 
 	def setUp(self):
-		# import pdb; pdb.set_trace()
 		self.user_data = {
 			'role': UserAccount.DOCTOR,
 			'email': 'johndoe@gmail.com',
