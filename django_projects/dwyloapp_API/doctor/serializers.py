@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from accounts.models import UserAccount
-from .models import DoctorProfile, DoctorAvailability, DoctorSlots, Appointments, DoctorReviews
+from .models import DoctorProfile, DoctorAvailability, DoctorSlot, Appointment,\
+     DoctorReview, ConsultationDetail
 from project.utility.send_otp_email import send_otp_email_verify
 from django.db import transaction
 
@@ -87,7 +88,7 @@ class DoctorProfileSerializer(serializers.ModelSerializer):
 
 class DoctorSlotSerializer(serializers.ModelSerializer):
     class Meta:
-        model = DoctorSlots
+        model = DoctorSlot
         fields = '__all__'
 
 
@@ -106,7 +107,7 @@ class DoctorAvailabilitySerializer(serializers.ModelSerializer):
    
 class ConfirmAppointmentsSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Appointments
+        model = Appointment
         fields = '__all__'    
 
 
@@ -116,19 +117,46 @@ class AppointmentsSerializer(serializers.ModelSerializer):
     patient = PatientProfileSerializer()
     slot = DoctorSlotSerializer()
     class Meta:
-        model = Appointments
+        model = Appointment
         fields = (
             'id',
             'doctor',
             'patient',
             'slot',
+            'status'
+        )
 
+
+class ConsultationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ConsultationDetail
+        fields = "__all__"
+
+
+class ConsultationDetailSerializer(serializers.ModelSerializer):
+    doctor = DoctorProfileSerializer()
+    patient = PatientProfileSerializer()
+    slot = DoctorSlotSerializer()
+    appointment = AppointmentsSerializer()
+    class Meta:
+        model = ConsultationDetail
+        fields = (
+            'id',
+            'doctor',
+            'patient',
+            'slot',
+            'appointment',
+            'notes',
+            'medication',
+            'lab_test',
+            'next_appointment',
+            'health_status'
         )
 
 
 class DoctorReviewsSerializer(serializers.ModelSerializer):
     class Meta:
-        model = DoctorReviews
+        model = DoctorReview
         fields = "__all__"
 
     def update(self, instance, validated_data):

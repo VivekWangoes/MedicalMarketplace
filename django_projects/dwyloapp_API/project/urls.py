@@ -14,26 +14,26 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.conf.urls import url,include
+from django.urls import path,include
 #from rest_framework_simplejwt import views as jwt_views
 from rest_framework_jwt.views import obtain_jwt_token, refresh_jwt_token, verify_jwt_token
 
 urlpatterns = [
-    url('admin/', admin.site.urls),
-    url('api-auth/', include('rest_framework.urls')),
-    url(r'^api-token-auth/', obtain_jwt_token),
-    url(r'^api-token-refresh/', refresh_jwt_token),
-    url(r'^api-token-verify/', verify_jwt_token),
-    url('api/password_reset/', include('django_rest_passwordreset.urls', namespace='password_reset')),
+    path('admin/', admin.site.urls),
+    path('api-auth/', include('rest_framework.urls')),
+    # path(r'^api-token-auth/', obtain_jwt_token),
+    # path(r'^api-token-refresh/', refresh_jwt_token),
+    # path(r'^api-token-verify/', verify_jwt_token),
+    #path('api/password_reset/', include('django_rest_passwordreset.urls', namespace='password_reset')),
 
     #Account app url
-    url('accounts/', include('accounts.urls')),
+    path('accounts/', include('accounts.urls')),
     #Admin app url
-    url('admin-user/', include('admin_user.urls')),
+    path('admin-user/', include('admin_user.urls')),
     #Doctor app url
-    url('doctor/', include('doctor.urls')),
+    path('doctor/', include('doctor.urls')),
     #Patient app url
-    url('patient/', include('patient.urls'))
+    path('patient/', include('patient.urls'))
 
 ]
 

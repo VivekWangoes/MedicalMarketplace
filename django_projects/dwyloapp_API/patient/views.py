@@ -16,6 +16,8 @@ from .permissions import IsPatient, IsTokenValid
 from accounts.models import UserAccount
 from project.utility.send_otp_email import send_otp_email_verify
 import math
+from doctor.models import Appointment
+from doctor.serializers import ConsultationDetailSerializer
 # Create your views here.
 
 
@@ -206,3 +208,16 @@ class PatientCompleteProfile(APIView):
         percentage = math.ceil((complete_fields / 25) * 100)
         serialize_data['complete_profile'] = str(percentage) + "%"
         return Response(serialize_data, status=status.HTTP_200_OK)
+
+
+class PatientConsultationDetail(APIView):
+    """access consultation details"""
+    permission_classes = [IsPatient, IsTokenValid]
+    def get(self, request, id):
+        try:
+            appointment_data = Appointment.objects.filter(id=id)
+            serialize_data = ConsultationDetailSerializer(appointment_data)
+            return Response(serialize_data, status=status.HTTP_200_OK)
+        except Exception as exception:
+            return Response({"error": str(exception)},
+                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)

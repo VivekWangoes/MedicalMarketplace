@@ -19,6 +19,7 @@ urlpatterns = [
     path('upcoming-appointment',doctor_view.UpcomingAppointments.as_view()),
     path('completed-appointment',doctor_view.CompletedAppointments.as_view()),
     path('cancle-appointment/<uuid:id>/',doctor_view.CancleAppointment.as_view()),
-    path('write-review',doctor_view.DoctorReview.as_view()),
-    
+    path('write-review',doctor_view.DoctorReviewView.as_view()),
+    path('all-review',doctor_view.DoctorAllReview.as_view()),
+    path('consultation-detail/<uuid:id>/',doctor_view.ConsultationDetailView.as_view()),
   ]

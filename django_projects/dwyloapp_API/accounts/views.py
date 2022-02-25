@@ -70,7 +70,7 @@ class VerifyEmail(APIView):
         try:
             with transaction.atomic():
                 email = request.data.get('email')
-                user_obj = UserAccount.objects.get(email=email)
+                user_obj = UserAccount.objects.filter(email=email).first()
                 if not user_obj:
                     return Response({'message': Messages.USER_NOT_EXISTS},
                                      status=status.HTTP_404_NOT_FOUND)

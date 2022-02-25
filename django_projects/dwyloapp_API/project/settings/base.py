@@ -14,7 +14,6 @@ from pathlib import Path
 import os 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve(strict=True).parent.parent
-print('basedir',BASE_DIR)
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/3.1/howto/deployment/checklist/
@@ -42,7 +41,6 @@ INSTALLED_APPS = [
     'doctor',
     'patient',
     'rest_framework',
-    # 'rest_framework_simplejwt',
     'django_rest_passwordreset',
     #django otp
     'django_otp',

@@ -28,5 +28,5 @@ class Messages:
 	REVIEW_SAVED = "Your review saved successfully"
 	REVIEW_UPDATE = "Your review update successfully"
 	ALREADY_WRITTEN = "You have already given review"
-	INVALID_TIME = "Please give valid time"
-
+	INVALID_TIME = "Please give valid time your time is than current time"
+	CONSULTATION_DETAIL = "Consulation details have been gven successfully"

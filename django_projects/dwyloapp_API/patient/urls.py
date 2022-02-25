@@ -14,4 +14,5 @@ urlpatterns = [
 	path('medical-profile',patient_view.PatientMedicalProfileView.as_view()),
 	path('life-style',patient_view.PatientLifeStyleView.as_view()),
 	path('complete-profile',patient_view.PatientCompleteProfile.as_view()),
+	path('consultation-detail/<uuid:id>/',patient_view.PatientConsultationDetail.as_view())
 	]

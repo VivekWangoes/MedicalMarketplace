@@ -1,8 +1,8 @@
 from django.contrib import admin
-from .models import DoctorProfile, DoctorAvailability, DoctorSlots, Appointments, DoctorReviews
+from .models import DoctorProfile, DoctorAvailability, DoctorSlot, Appointment, DoctorReview
 # Register your models here.
 admin.site.register(DoctorProfile)
-admin.site.register(DoctorSlots)
+admin.site.register(DoctorSlot)
 admin.site.register(DoctorAvailability)
-admin.site.register(Appointments)
-admin.site.register(DoctorReviews)
+admin.site.register(Appointment)
+admin.site.register(DoctorReview)
