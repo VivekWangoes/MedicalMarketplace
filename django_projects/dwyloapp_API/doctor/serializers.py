@@ -40,7 +40,6 @@ class DoctorProfileSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         with transaction.atomic():
-            print(validated_data)
             doctor_data = dict(validated_data.pop('doctor'))
             instance.email = doctor_data.get('email', instance.email)
             instance.name = doctor_data.get('name', instance.name)
@@ -131,20 +130,23 @@ class ConsultationSerializer(serializers.ModelSerializer):
     class Meta:
         model = ConsultationDetail
         fields = "__all__"
+    
+    def update(self, instance, validated_data):
+        instance.notes = validated_data.get('notes', instance.notes)
+        instance.medication = validated_data.get('medication', instance.medication)
+        instance.lab_test = validated_data.get('lab_test', instance.lab_test)
+        instance.next_appointment = validated_data.get('next_appointment', instance.next_appointment)
+        instance.health_status = validated_data.get('health_status', instance.health_status)
+        instance.save()
+        return instance
 
 
 class ConsultationDetailSerializer(serializers.ModelSerializer):
-    doctor = DoctorProfileSerializer()
-    patient = PatientProfileSerializer()
-    slot = DoctorSlotSerializer()
     appointment = AppointmentsSerializer()
     class Meta:
         model = ConsultationDetail
         fields = (
             'id',
-            'doctor',
-            'patient',
-            'slot',
             'appointment',
             'notes',
             'medication',

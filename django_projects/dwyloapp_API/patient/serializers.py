@@ -4,7 +4,8 @@ from accounts.views import send_otp_email_verify
 from project.utility.send_otp_email import send_otp_email_verify
 from django.db import transaction
 from .models import PatientProfile, Alergies, Medication, Dieseas, Injuries,\
-      Surgery, PatientMedicalProfile, PatientLifeStyle
+      Surgery, PatientMedicalProfile, PatientLifeStyle, Address, MyCartItem,\
+      Medicine, MyCart
 
 class PatientSerializer(serializers.ModelSerializer):
     class Meta:
@@ -133,3 +134,27 @@ class PatientCompleteProfileSerializer(serializers.ModelSerializer):
             'emergency_contact_phone',
             'location'
         )
+
+
+class AddressSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Address
+        fields = "__all__"
+
+
+class MedicineSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Medicine
+        fields = "__all__"
+
+
+class MyCartSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MyCart
+        fields = "__all__"
+
+        
+class MyCartItemSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MyCartItem
+        fields = "__all__"

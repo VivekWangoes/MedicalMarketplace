@@ -3,6 +3,7 @@ import datetime
 import os
 
 DEBUG = True
+#ALLOWED_HOSTS = ['*','192.168.1.15']
 ALLOWED_HOSTS = []
 
 DATABASES = {

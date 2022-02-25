@@ -15,19 +15,6 @@ class IsTokenValid(BasePermission):
         return is_allowed_user
 
 
-class IsDoctor(BasePermission):
-	"""Check requested user is doctor or not"""
-	def has_permission(self, request, view):
-		try:
-			user_role = request.user.role
-			if user_role == UserAccount.DOCTOR:
-				return True
-			else:
-				False
-		except:
-			False
-
-
 class IsPatient(BasePermission):
 	"""Check requested user is patient or not"""
 	def has_permission(self, request, view):

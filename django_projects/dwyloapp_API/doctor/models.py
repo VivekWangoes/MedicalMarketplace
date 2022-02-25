@@ -101,7 +101,7 @@ class Appointment(Base):
 		return "%s %s %s" % (self.doctor_id, self.patient_id, self.slot_id)
 
 
-class ConsultationDetail(models.Model):
+class ConsultationDetail(Base):
 	appointment = models.OneToOneField(Appointment, related_name="consultation", on_delete=models.CASCADE)
 	notes = models.TextField()
 	medication = models.CharField(max_length=50, null=True, blank=True)
