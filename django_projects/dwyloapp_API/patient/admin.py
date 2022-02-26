@@ -1,13 +1,14 @@
 from django.contrib import admin
-from .models import PatientProfile, Alergies, Medication, Dieseas,\
-	 Injuries, Surgery, PatientMedicalProfile, PatientLifeStyle, Address,\
+# Dieseas,Injuries, allergies
+from .models import PatientProfile, Allergy, Medication, Disease,\
+	 Injury, Surgery, PatientMedicalProfile, PatientLifeStyle, Address,\
  	 Medicine, MyCart, MyCartItem
 # Register your models here.
 admin.site.register(PatientProfile)
-admin.site.register(Alergies)
+admin.site.register(Allergy)
 admin.site.register(Medication)
-admin.site.register(Dieseas)
-admin.site.register(Injuries)
+admin.site.register(Disease)
+admin.site.register(Injury)
 admin.site.register(Surgery)
 admin.site.register(PatientMedicalProfile)
 admin.site.register(PatientLifeStyle)

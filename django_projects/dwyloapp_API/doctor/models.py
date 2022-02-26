@@ -87,9 +87,9 @@ class Appointment(Base):
 	CANCLE = "CANCLE"
 
 	STATUS_CHOICE = (
-			(COMPLETED, 'Completed'),
-			(UPCOMING, 'Upcoming'),
-			(CANCLE, 'Cancle')
+		(COMPLETED, 'Completed'),
+		(UPCOMING, 'Upcoming'),
+		(CANCLE, 'Cancle')
 	)
 
 	doctor = models.ForeignKey(DoctorProfile, related_name="doctor_appointments", on_delete=models.CASCADE)

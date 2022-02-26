@@ -57,8 +57,7 @@ class UserAccount(Base, AbstractBaseUser, PermissionsMixin):
     ROLE_TYPES = (
         (SUPER_ADMIN, 'SUPER_ADMIN'),
         (DOCTOR, 'DOCTOR'),
-        (PATIENT, 'PATIENT'),
-        
+        (PATIENT, 'PATIENT')
     )
 
     role = models.IntegerField(choices=ROLE_TYPES)
