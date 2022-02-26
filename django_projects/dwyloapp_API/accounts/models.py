@@ -22,7 +22,6 @@ class UserAccountManager(BaseUserManager):
         return user
 
     def create_superuser(self, email, name, mobile_no, password, role):
-        print("super user")
         user = self.create_user(email, name, mobile_no, password, role)
         user.is_superuser = True
         user.is_staff = True
@@ -64,8 +63,10 @@ class UserAccount(Base, AbstractBaseUser, PermissionsMixin):
     role = models.IntegerField(choices=ROLE_TYPES)
     email = models.EmailField(max_length=254, unique=True)
     name = models.CharField(max_length=150)
-    otp = models.CharField(max_length=5,null=True, blank=True)
-    otp_created = models.DateTimeField(auto_now_add=True, blank=True, null=True)
+    email_otp = models.CharField(max_length=5,null=True, blank=True)
+    email_otp_created = models.DateTimeField(null=True, blank=True)
+    login_otp = models.CharField(max_length=5,null=True, blank=True)
+    login_otp_created = models.DateTimeField(null=True, blank=True)
     mobile_no = models.CharField(max_length=12)
     last_name = models.CharField(max_length=150, null=True, blank=True, default="")
     is_staff = models.BooleanField(default=False)
@@ -74,6 +75,8 @@ class UserAccount(Base, AbstractBaseUser, PermissionsMixin):
     is_email_verified = models.BooleanField(default=False)
     device_id = models.CharField(max_length=255, null=True, blank=True)
     status = models.CharField(max_length=50, choices=USER_STATUSES, default=ACTIVE)
+    offer = models.BooleanField(default=False)
+    term_condition = models.BooleanField(default=False)
     
 
     objects = UserAccountManager()

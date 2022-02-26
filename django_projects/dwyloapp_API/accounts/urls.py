@@ -6,8 +6,8 @@ app_name = "accounts"
 urlpatterns = [
 	path('user',account_view.UsersView.as_view()),
     path('verify-email',account_view.VerifyEmail.as_view()),
-    path('resend-otp',account_view.VerifyEmail.as_view()),
-    path('send-otp',account_view.VerifyEmail.as_view()),
+    path('resend-emailverify-otp',account_view.VerifyEmail.as_view()),
+    path('resend-login-otp',account_view.LoginWithOTP.as_view()),
     path('loginwith-otp',account_view.LoginWithOTP.as_view()),
     path('signin',account_view.SignIn.as_view()),
     path('logout',account_view.UserLogout.as_view()),

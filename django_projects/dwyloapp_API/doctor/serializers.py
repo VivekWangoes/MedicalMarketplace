@@ -1,7 +1,8 @@
 from rest_framework import serializers
 from accounts.models import UserAccount
-from .models import DoctorProfile, DoctorAvailability, DoctorSlot, Appointment, DoctorReview
-from project.utility.send_otp_email import send_otp_to_email
+from .models import DoctorProfile, DoctorAvailability, DoctorSlot, Appointment,\
+     DoctorReview, ConsultationDetail
+from project.utility.send_otp_email import send_otp_email_verify
 from django.db import transaction
 
 
@@ -13,7 +14,8 @@ class DoctorSerializer(serializers.ModelSerializer):
             'email',
             'name',
             'mobile_no',
-            'role'
+            'role',
+            'offer'
         )
 
 
@@ -32,19 +34,19 @@ class DoctorProfileSerializer(serializers.ModelSerializer):
             'location_city',
             'clinic',
             'consultation_fees',
-            'expertise_area'
+            'expertise_area',
+            'booking_fees'
         )
 
     def update(self, instance, validated_data):
         with transaction.atomic():
-            print(validated_data)
             doctor_data = dict(validated_data.pop('doctor'))
             instance.email = doctor_data.get('email', instance.email)
             instance.name = doctor_data.get('name', instance.name)
             instance.mobile_no = doctor_data.get('mobile_no', instance.mobile_no)
             if doctor_data.get('email'):
                 instance.is_email_verified = False
-                send_otp_to_email(doctor_data.get('email'), instance)
+                send_otp_email_verify(doctor_data.get('email'), instance)
             instance.save()
             if validated_data:
                 try:
@@ -119,7 +121,38 @@ class AppointmentsSerializer(serializers.ModelSerializer):
             'id',
             'doctor',
             'patient',
-            'slot'
+            'slot',
+            'status'
+        )
+
+
+class ConsultationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ConsultationDetail
+        fields = "__all__"
+    
+    def update(self, instance, validated_data):
+        instance.notes = validated_data.get('notes', instance.notes)
+        instance.medication = validated_data.get('medication', instance.medication)
+        instance.lab_test = validated_data.get('lab_test', instance.lab_test)
+        instance.next_appointment = validated_data.get('next_appointment', instance.next_appointment)
+        instance.health_status = validated_data.get('health_status', instance.health_status)
+        instance.save()
+        return instance
+
+
+class ConsultationDetailSerializer(serializers.ModelSerializer):
+    appointment = AppointmentsSerializer()
+    class Meta:
+        model = ConsultationDetail
+        fields = (
+            'id',
+            'appointment',
+            'notes',
+            'medication',
+            'lab_test',
+            'next_appointment',
+            'health_status'
         )
 
 

@@ -76,3 +76,55 @@ class PatientLifeStyle(Base, models.Model):
 
 	def __str__(self):
 		return str(self.patient)
+
+
+class Address(Base, models.Model):
+	HOME = "HOME"
+	OFFICE = "OFFICE"
+	OTHER = "OTHER"
+	ADDRESS_CHOICES = (
+		(HOME, "Home"),
+		(OFFICE, "Office"),
+		(OTHER, "Other")
+	)
+	patient = models.ForeignKey(PatientProfile, related_name="patient_address", on_delete=models.CASCADE)
+	house_no_building_name = models.CharField(max_length=100)
+	street_addr1 = models.CharField(max_length=100)
+	street_addr2 = models.CharField(max_length=100)
+	pincode = models.CharField(max_length=50)
+	mobile_no = models.CharField(max_length=12)
+	address_type = models.CharField(max_length=50, choices=ADDRESS_CHOICES)
+	other = models.CharField(max_length=50, null=True, blank=True)
+	name = models.CharField(max_length=50, null=True, blank=True)
+	email = models.CharField(max_length=50, null=True, blank=True)
+
+	def __str__(self):
+		return str(self.patient)
+
+
+class Medicine(Base, models.Model):
+	name =  models.CharField(max_length=100)
+	solubility = models.CharField(max_length=50)
+	company = models.CharField(max_length=100)
+	price = models.FloatField()
+
+	def __str__(self):
+		return str(self.name)
+
+
+class MyCart(Base, models.Model):
+	patient = models.ForeignKey(PatientProfile, related_name="patient_cart", on_delete=models.CASCADE)
+
+	def __str__(self):
+		return str(self.patient)
+
+
+class MyCartItem(Base, models.Model):
+	mycart = models.ForeignKey(MyCart, related_name="mycart", on_delete=models.CASCADE)
+	medicine = models.ForeignKey(Medicine, related_name="medicine_cart", on_delete=models.CASCADE)
+	quantity = models.IntegerField()
+	address = models.ForeignKey(Address, related_name="address_cart", on_delete=models.CASCADE)
+	prescription = models.FileField(upload_to = 'file/', blank=True, null=True)
+
+	def __str__(self):
+		return str(self.mycart_item)

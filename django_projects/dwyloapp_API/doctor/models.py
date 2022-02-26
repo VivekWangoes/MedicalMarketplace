@@ -1,6 +1,7 @@
 from django.db import models
 from accounts.models import UserAccount
 from core.models import Base
+from patient.models import PatientProfile
 # Create your models here.
 
 class DoctorProfile(Base):
@@ -26,6 +27,9 @@ class DoctorProfile(Base):
 	consultation_fees = models.IntegerField(blank=True, null=True)
 	expertise_area = models.TextField(blank=True, null=True)
 	verification = models.CharField(max_length=50, default=INCOMPLETED, blank=True, null=True)
+	rating = models.IntegerField(default=0)
+	booking_fees = models.IntegerField(blank=True, null=True)
+
 
 	def __str__(self):
 		return str(self.doctor)
@@ -56,6 +60,7 @@ class DoctorAvailability(Base):
 	slot_date = models.DateField(blank=True, null=True)
 	day = models.CharField(max_length=50, blank=True, null=True)
 	slot = models.CharField(max_length=50, choices=SLOT_TIME, blank=True, null=True)
+
 	time_slot = models.ManyToManyField(DoctorSlot)
 	#daily = models.BooleanField(default=False)
 
@@ -68,8 +73,8 @@ class DoctorAvailability(Base):
 
 
 class DoctorReview(Base):
-	doctor_data = models.ForeignKey(DoctorProfile, on_delete=models.CASCADE)
-	user_data = models.ForeignKey(UserAccount, on_delete=models.CASCADE)
+	doctor = models.ForeignKey(DoctorProfile, related_name='doctor_profile', on_delete=models.CASCADE, null=True, blank=True)
+	patient = models.ForeignKey(PatientProfile, related_name='patient_profile',on_delete=models.CASCADE, null=True, blank=True)
 	review = models.TextField()
 	prescription_rating = models.CharField(max_length=10, null=True, blank=True)
 	explanation_rating = models.CharField(max_length=10, null=True, blank=True)
@@ -88,9 +93,18 @@ class Appointment(Base):
 	)
 
 	doctor = models.ForeignKey(DoctorProfile, related_name="doctor_appointments", on_delete=models.CASCADE)
-	patient = models.ForeignKey(UserAccount, related_name="patient_appointments", on_delete=models.CASCADE)
+	patient = models.ForeignKey(PatientProfile, related_name="patient_appointments", on_delete=models.CASCADE, blank=True, null=True)
 	slot = models.OneToOneField(DoctorSlot, related_name='doctor_slot', on_delete=models.CASCADE)
 	status = models.CharField(max_length=50, choices=STATUS_CHOICE, blank=True, null=True)
 
 	def __str__(self):
 		return "%s %s %s" % (self.doctor_id, self.patient_id, self.slot_id)
+
+
+class ConsultationDetail(Base):
+	appointment = models.OneToOneField(Appointment, related_name="consultation", on_delete=models.CASCADE)
+	notes = models.TextField()
+	medication = models.CharField(max_length=50, null=True, blank=True)
+	lab_test = models.CharField(max_length=50, null=True, blank=True)
+	next_appointment = models.DateTimeField(null=True, blank=True)
+	health_status = models.CharField(max_length=50, blank=True, null=True) 
