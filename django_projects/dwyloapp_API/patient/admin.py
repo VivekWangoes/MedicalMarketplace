@@ -2,7 +2,7 @@ from django.contrib import admin
 # Dieseas,Injuries, allergies
 from .models import PatientProfile, Allergy, Medication, Disease,\
 	 Injury, Surgery, PatientMedicalProfile, PatientLifeStyle, Address,\
- 	 Medicine, MyCart, MyCartItem
+ 	 Medicine, MyCart, MyCartItem, LabTest
 # Register your models here.
 admin.site.register(PatientProfile)
 admin.site.register(Allergy)
@@ -16,3 +16,4 @@ admin.site.register(Address)
 admin.site.register(Medicine)
 admin.site.register(MyCart)
 admin.site.register(MyCartItem)
+admin.site.register(LabTest)

@@ -5,7 +5,7 @@ from project.utility.send_otp_email import send_otp_email_verify
 from django.db import transaction
 from .models import PatientProfile, Allergy, Medication, Disease, Injury,\
       Surgery, PatientMedicalProfile, PatientLifeStyle, Address, MyCartItem,\
-      Medicine, MyCart
+      Medicine, MyCart, LabTest
 
 
 class PatientSerializer(serializers.ModelSerializer):
@@ -149,13 +149,38 @@ class MedicineSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 
-class MyCartSerializer(serializers.ModelSerializer):
+class LabTestSerializer(serializers.ModelSerializer):
     class Meta:
-        model = MyCart
+        model = LabTest
         fields = "__all__"
 
-        
+
+class MyCartSerializer(serializers.ModelSerializer):
+    #patient = PatientProfileSerializer()
+    class Meta:
+        model = MyCart
+        fields = "__all__"#['patient']
+
+
 class MyCartItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = MyCartItem
         fields = "__all__"
+
+
+class GetMyCartItemSerializer(serializers.ModelSerializer):
+    mycart = MyCartSerializer()
+    address = AddressSerializer()
+    medicine = MedicineSerializer()
+    lab_test = LabTestSerializer()
+    class Meta:
+        model = MyCartItem
+        fields = (
+            "mycart",
+            "address",
+            "medicine",
+            "lab_test",
+            "quantity",
+            "prescription"
+        )
+

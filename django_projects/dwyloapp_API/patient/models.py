@@ -112,19 +112,36 @@ class Medicine(Base):
 		return str(self.name)
 
 
-class MyCart(Base):
-	patient = models.ForeignKey(PatientProfile, related_name="patient_cart", on_delete=models.CASCADE)
+class LabTest(Base):
+	name =  models.CharField(max_length=100)
+	price = models.FloatField()
 
 	def __str__(self):
-		return str(self.patient)
+		return str(self.name)
+
+
+class MyCart(Base):
+	patient_cart = models.ForeignKey(PatientProfile, related_name="patient_cart", on_delete=models.CASCADE)
+
+	def __str__(self):
+		return str(self.patient_cart)
 
 
 class MyCartItem(Base):
+	MEDICINE = "MEDICINE"
+	LAB_TEST = "LAB_TEST"
+	ITEM_CHOICE = (
+		(MEDICINE, "Medicine"),
+		(LAB_TEST, "Lab_Test")
+	)
+
 	mycart = models.ForeignKey(MyCart, related_name="mycart", on_delete=models.CASCADE)
-	medicine = models.ForeignKey(Medicine, related_name="medicine_cart", on_delete=models.CASCADE)
-	quantity = models.IntegerField()
+	medicine = models.ForeignKey(Medicine, related_name="medicine_cart", on_delete=models.CASCADE, null=True, blank=True)
+	lab_test = models.ForeignKey(LabTest, related_name="lab_test", on_delete=models.CASCADE, null=True, blank=True)
+	quantity = models.IntegerField(null=True, blank=True)
 	address = models.ForeignKey(Address, related_name="address_cart", on_delete=models.CASCADE)
 	prescription = models.FileField(upload_to = 'file/', blank=True, null=True)
+	item_choice = models.CharField(max_length=50, choices=ITEM_CHOICE, null=True, blank=True)
 
 	def __str__(self):
-		return str(self.mycart_item)
+		return str(self.mycart)
