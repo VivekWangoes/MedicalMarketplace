@@ -36,3 +36,4 @@ class Messages:
 	ADDRESS_NOT_FOUND = "address not set please set delivery address"
 	ADDRESS_SAVED = "address saved successfully"
 	NO_MEDICINE = "Medicine Not available"
+	ITEM_SAVED = "Item saved successfully into your cart"

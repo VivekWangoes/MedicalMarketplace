@@ -18,10 +18,10 @@ from .serializers import PatientProfileSerializer, PatientMedicalProfileSerializ
      DieseasSerializer, InjuriesSerializer, SurgerySerializer, PatientCompleteProfileSerializer,\
      AddressSerializer, MyCartItemSerializer, MedicineSerializer, MyCartSerializer
 from doctor.models import DoctorProfile, DoctorAvailability, DoctorSlot,\
-     DoctorReview, ConsultationDetail, Appointment
-from doctor.serializers import ConsultationDetailSerializer, DoctorAvailabilitySerializer,\
+     DoctorReview, Appointment#ConsultationDetail,
+from doctor.serializers import DoctorProfileSerializer, DoctorAvailabilitySerializer,\
      ConfirmAppointmentsSerializer, AppointmentsSerializer, DoctorReviewsSerializer,\
-     ConsultationSerializer, DoctorProfileSerializer
+     ConsultationSerializer, ConsultationDetailSerializer
 # Create your views here.
 
 
@@ -562,10 +562,30 @@ class AddressView(APIView):
 
     def post(self, request):
         try:
+            schema = {
+                    "house_no_building_name": {'type':'string', 'required': True, 'empty': False},
+                    "street_addr1": {'type':'string', 'required': True, 'empty': False},
+                    "street_addr2": {'type':'string', 'required': True, 'empty': False},
+                    "pincode": {'type':'string', 'required': True, 'empty': False},
+                    "mobile_no": {'type':'string', 'required': True, 'empty': False},
+                    "address_type": {'type':'string', 'required': True, 'empty': False},
+                    "other": {'type':'string', 'required': False, 'empty': True},
+            }
+            if request.data.get('other'):
+                other = {
+                         "name": {'type':'string', 'required': True, 'empty': False},
+                         "email": {'type':'string', 'required': True, 'empty': False}
+                }
+                schema.update(other)
+
+            v = Validator()
+            if not v.validate(request.data, schema):
+                return Response({'error':v.errors},
+                                 status=status.HTTP_400_BAD_REQUEST)
             request.data._mutable = True
             request.data['patient'] = request.user.patient_profile.id
             request.data._mutable = False
-            serialize_data = AddressSerializer(request.data)
+            serialize_data = AddressSerializer(data=request.data)
             if serialize_data.is_valid(raise_exception=True):
                 serialize_data.save()
             return Response({"message": Messages.ADDRESS_SAVED},
@@ -574,12 +594,13 @@ class AddressView(APIView):
             return Response({"error": str(exception)},
                              status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+
 class MedicineView(APIView):
     """get all medicines"""
     permission_classes = [IsPatient, IsTokenValid]
     def get(self, request):
         try:
-            medicine_data = Medicine.objects.filter(name=request.data['name'])
+            medicine_data = Medicine.objects.filter(name__icontains=request.data['name'])
             if not medicine_data:
                 return Response({"message": Messages.NO_MEDICINE},
                                  status=status.HTTP_404_NOT_FOUND)
@@ -588,4 +609,25 @@ class MedicineView(APIView):
         except Exception as exception:
             return Response({"error": str(exception)},
                              status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class MyCartItemView(APIView):
+    """Add Item to cart"""
+    def post(self, request):
+        try:
+
+            mycart_obj = MyCart.objects.create(patient=request.user.patient_profile)
+            mycart_obj.save()
+            request.data._mutable = True
+            request.data['mycart'] = mycart_obj.id
+            request.data._mutable = False
+            serialize_data = MyCartItemSerializer(data=request.data)
+            if serialize_data.is_valid(raise_exception=True):
+                serialize_data.save()
+            return Response({"message": Messages.ITEM_SAVED},
+                             status=status.HTTP_200_OK)
+        except Exception as exception:
+            return Response({"error": str(exception)},
+                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 

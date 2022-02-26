@@ -26,5 +26,9 @@ urlpatterns = [
     path('completed-appointment',patient_view.CompletedAppointments.as_view()),
     path('cancle-appointment/<uuid:id>/',patient_view.CancleAppointment.as_view()),
     path('write-review',patient_view.DoctorReviewView.as_view()),
-	path('consultation-detail/<uuid:id>/',patient_view.PatientConsultationDetail.as_view())
+	path('consultation-detail/<uuid:id>/',patient_view.PatientConsultationDetail.as_view()),
+
+	path('address',patient_view.AddressView.as_view()),
+	path('medicine',patient_view.MedicineView.as_view()),
+	path('item-addtocart',patient_view.MyCartItemView.as_view())
 	]

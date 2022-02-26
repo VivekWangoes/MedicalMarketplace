@@ -76,7 +76,7 @@ class PatientLifeStyle(Base, models.Model):
 		return str(self.patient)
 
 
-class Address(Base, models.Model):
+class Address(Base):
 	HOME = "HOME"
 	OFFICE = "OFFICE"
 	OTHER = "OTHER"
@@ -100,7 +100,7 @@ class Address(Base, models.Model):
 		return str(self.patient)
 
 
-class Medicine(Base, models.Model):
+class Medicine(Base):
 	name =  models.CharField(max_length=100)
 	solubility = models.CharField(max_length=50)
 	company = models.CharField(max_length=100)
@@ -110,14 +110,14 @@ class Medicine(Base, models.Model):
 		return str(self.name)
 
 
-class MyCart(Base, models.Model):
+class MyCart(Base):
 	patient = models.ForeignKey(PatientProfile, related_name="patient_cart", on_delete=models.CASCADE)
 
 	def __str__(self):
 		return str(self.patient)
 
 
-class MyCartItem(Base, models.Model):
+class MyCartItem(Base):
 	mycart = models.ForeignKey(MyCart, related_name="mycart", on_delete=models.CASCADE)
 	medicine = models.ForeignKey(Medicine, related_name="medicine_cart", on_delete=models.CASCADE)
 	quantity = models.IntegerField()

@@ -107,4 +107,4 @@ class ConsultationDetail(Base):
 	medication = models.CharField(max_length=50, null=True, blank=True)
 	lab_test = models.CharField(max_length=50, null=True, blank=True)
 	next_appointment = models.DateTimeField(null=True, blank=True)
-	health_status = models.CharField(max_length=50, blank=True, null=True) 
+	health_status = models.CharField(max_length=50, blank=True, null=True)
