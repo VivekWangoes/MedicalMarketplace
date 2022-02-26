@@ -3,8 +3,9 @@ from accounts.models import UserAccount
 from accounts.views import send_otp_to_email
 from project.utility.send_otp_email import send_otp_to_email
 from django.db import transaction
-from .models import PatientProfile, Alergies, Medication, Dieseas, Injuries,\
+from .models import PatientProfile, Allergy, Medication, Disease, Injury,\
       Surgery, PatientMedicalProfile, PatientLifeStyle
+
 
 class PatientSerializer(serializers.ModelSerializer):
     class Meta:
@@ -55,9 +56,9 @@ class PatientProfileSerializer(serializers.ModelSerializer):
         return instance
 
 
-class AlergiesSerializer(serializers.ModelSerializer):
+class AllergySerializer(serializers.ModelSerializer):
     class Meta:
-        model = Alergies
+        model = Allergy
         fields = "__all__"
 
 
@@ -67,15 +68,15 @@ class MedicationSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 
-class DieseasSerializer(serializers.ModelSerializer):
+class DiseaseSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Dieseas
+        model = Disease
         fields = "__all__"
 
 
-class InjuriesSerializer(serializers.ModelSerializer):
+class InjurySerializer(serializers.ModelSerializer):
     class Meta:
-        model = Injuries
+        model = Injury
         fields = "__all__"
 
 

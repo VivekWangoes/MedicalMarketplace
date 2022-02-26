@@ -32,7 +32,7 @@ class DoctorProfile(Base):
 
 	def save(self, *args, **kwargs):
 		self.full_clean()
-		self.save(*args, **kwargs)
+		super().save(*args, **kwargs)
 
 
 class DoctorSlot(Base):
@@ -82,9 +82,9 @@ class Appointment(Base):
 	CANCLE = "CANCLE"
 
 	STATUS_CHOICE = (
-			(COMPLETED, 'Completed'),
-			(UPCOMING, 'Upcoming'),
-			(CANCLE, 'Cancle')
+		(COMPLETED, 'Completed'),
+		(UPCOMING, 'Upcoming'),
+		(CANCLE, 'Cancle')
 	)
 
 	doctor = models.ForeignKey(DoctorProfile, related_name="doctor_appointments", on_delete=models.CASCADE)
