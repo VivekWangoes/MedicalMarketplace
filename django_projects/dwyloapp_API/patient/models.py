@@ -162,24 +162,24 @@ class MyCartItem(Base):
 
 
 
-class OrderCart(Base):
-	mycart_order = models.ForeignKey(MyCart, related_name='mycart_order', on_delete=models.CASCADE)
+# class OrderCart(Base):
+# 	mycart_order = models.ForeignKey(MyCart, related_name='mycart_order', on_delete=models.CASCADE)
 
-	def __str__(self):
-		return str(self.order_cart)
+# 	def __str__(self):
+# 		return str(self.order_cart)
 
 
-class OrderItemConfirmed(Base):
-	COMPLETED = "COMPLETED"
-	YET_TO_BE_DELIVERED = "YET_TO_BE_DELIVERED"
-	CANCLE = "CANCLE"
-	STATUS_CHOICE = (
-		(COMPLETED, "Completed"),
-		(YET_TO_BE_DELIVERED, "Yet to be delivered"),
-		(CANCLE, "Cancle")
-	)
-	order = models.ForeignKey(OrderCart, related_name='order_cart', on_delete=models.CASCADE)
-	item = models.ForeignKey(MyCartItem, related_name='cart_item', on_delete=models.CASCADE)
-	status = models.CharField(max_length=50, choices=STATUS_CHOICE, default=YET_TO_BE_DELIVERED)
-	order_date = models.DateTimeField(auto_now=True, null=True, blank=True)
-	delivery_date = models.DateTimeField(null=True, blank=True) 
+# class OrderItemConfirmed(Base):
+# 	COMPLETED = "COMPLETED"
+# 	YET_TO_BE_DELIVERED = "YET_TO_BE_DELIVERED"
+# 	CANCLE = "CANCLE"
+# 	STATUS_CHOICE = (
+# 		(COMPLETED, "Completed"),
+# 		(YET_TO_BE_DELIVERED, "Yet to be delivered"),
+# 		(CANCLE, "Cancle")
+# 	)
+# 	order = models.ForeignKey(OrderCart, related_name='order_cart', on_delete=models.CASCADE)
+# 	item = models.ForeignKey(MyCartItem, related_name='cart_item', on_delete=models.CASCADE)
+# 	status = models.CharField(max_length=50, choices=STATUS_CHOICE, default=YET_TO_BE_DELIVERED)
+# 	order_date = models.DateTimeField(auto_now=True, null=True, blank=True)
+# 	delivery_date = models.DateTimeField(null=True, blank=True) 
