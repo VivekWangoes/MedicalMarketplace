@@ -170,6 +170,22 @@ class MyCartItemSerializer(serializers.ModelSerializer):
 
 class GetMyCartItemSerializer(serializers.ModelSerializer):
     mycart = MyCartSerializer()
+    #address = AddressSerializer()
+    medicine = MedicineSerializer()
+    lab_test = LabTestSerializer()
+    class Meta:
+        model = MyCartItem
+        fields = (
+            "mycart",
+            #"address",
+            "medicine",
+            "lab_test",
+            "quantity",
+            "prescription"
+        )
+
+class OrderSummarySerializer(serializers.ModelSerializer):
+    mycart = MyCartSerializer()
     address = AddressSerializer()
     medicine = MedicineSerializer()
     lab_test = LabTestSerializer()
@@ -183,4 +199,3 @@ class GetMyCartItemSerializer(serializers.ModelSerializer):
             "quantity",
             "prescription"
         )
-

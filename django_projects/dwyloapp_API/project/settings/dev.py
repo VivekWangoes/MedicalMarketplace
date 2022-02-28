@@ -4,8 +4,15 @@ import os
 from decouple import config
 
 DEBUG = True
-#ALLOWED_HOSTS = ['*','192.168.1.15']
-ALLOWED_HOSTS = []
+# ALLOWED_HOSTS = ['192.168.1.44']
+# CORS_ORIGIN_ALLOW_ALL = False
+
+# CORS_ORIGIN_WHITELIST = (
+#     'http://192.168.1.44:8000',
+# )
+
+ALLOWED_HOSTS=['*']
+CORS_ORIGIN_ALLOW_ALL = True
 
 DATABASES = {
     'default': {

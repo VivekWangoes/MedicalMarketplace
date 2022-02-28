@@ -32,4 +32,5 @@ urlpatterns = [
 	path('medicine',patient_view.MedicineView.as_view()),
 	path('lab-test',patient_view.LabTestView.as_view()),
 	path('item-addtocart',patient_view.MyCartItemView.as_view()),
+	path('order-summary',patient_view.OrderSummary.as_view())
 	]

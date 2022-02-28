@@ -6,6 +6,7 @@ from rest_framework import status
 from project.config.messages import Messages
 from cerberus import Validator
 from django.db import transaction
+from django.db.models import Sum, Count
 from project.utility.send_otp_email import send_otp_email_verify
 import math
 from datetime import datetime, timedelta, timezone
@@ -18,7 +19,7 @@ from .serializers import PatientProfileSerializer, PatientMedicalProfileSerializ
      PatientLifeStyleSerializer, AllergySerializer, MedicationSerializer,\
      DiseaseSerializer, InjurySerializer, SurgerySerializer, PatientCompleteProfileSerializer,\
      AddressSerializer, MyCartItemSerializer, GetMyCartItemSerializer, MedicineSerializer, MyCartSerializer,\
-     LabTestSerializer
+     LabTestSerializer, OrderSummarySerializer
 from doctor.models import DoctorProfile, DoctorAvailability, DoctorSlot,\
      DoctorReview, Appointment#ConsultationDetail,
 from doctor.serializers import DoctorProfileSerializer, DoctorAvailabilitySerializer,\
@@ -619,7 +620,7 @@ class LabTestView(APIView):
         try:
             lab_test_data = LabTest.objects.filter(name__icontains=request.data['name'])
             if not lab_test_data:
-                return Response({"message": Messages.LAB_TEST},
+                return Response({"message": Messages.NO_LAB_TEST},
                                  status=status.HTTP_404_NOT_FOUND)
             serialize_data = LabTestSerializer(lab_test_data, many=True)
             return Response(serialize_data.data, status=status.HTTP_200_OK)
@@ -633,41 +634,64 @@ class MyCartItemView(APIView):
     permission_classes = [IsPatient, IsTokenValid]
     def get(self, request):
         try:
-            mycartitem_obj = MyCartItem.objects.filter(mycart__patient_cart=request.user.patient_profile)
-            print(mycartitem_obj)
-            #mycartitem_obj = MyCart.objects.filter(mycartitem__mycart=MyCart.objects.filter(patient_cart=request.user.patient_profile).first())
-            if not mycartitem_obj.exists():
+            medicine_cartitem_obj = MyCartItem.objects.filter(mycart__patient_cart=request.user.patient_profile,
+                                                              item_choice="MEDICINE")
+            labtest_cartitem_obj = MyCartItem.objects.filter(mycart__patient_cart=request.user.patient_profile,
+                                                             item_choice="LAB_TEST")
+            if not medicine_cartitem_obj.exists() and not labtest_cartitem_obj.exists():
                 return Response({"message": Messages.CARTITEM_NOT_EXIST},
                                  status=status.HTTP_404_NOT_FOUND)
-            serialize_data = GetMyCartItemSerializer(mycartitem_obj, many=True)
-            return Response(serialize_data.data, status=status.HTTP_200_OK)
+            medicine_serialize_data = GetMyCartItemSerializer(medicine_cartitem_obj, many=True)
+            labtest_serialize_data = GetMyCartItemSerializer(labtest_cartitem_obj, many=True)
+            serialize_data = medicine_serialize_data.data
+            serialize_data.append(labtest_serialize_data.data)
+            return Response(serialize_data, status=status.HTTP_200_OK)
         except Exception as exception:
             return Response({"error": str(exception)},
                              status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def post(self, request):
         try:
+            mycart_item_obj = None
             mycart_obj = MyCart.objects.filter(patient_cart=request.user.patient_profile).first()
             if not mycart_obj:
                 mycart_obj = MyCart.objects.create(patient_cart=request.user.patient_profile)
                 mycart_obj.save()
-            if request.data.get('item_choice') == "MEDICINE":
+            request.data._mutable = True
+            if request.data.get('medicine'):
+                medicine_data = Medicine.objects.filter(id=request.data.get('medicine')).first()
+                if not medicine_data:
+                    return Response({"message": Messages.NO_MEDICINE},
+                                     status=status.HTTP_404_NOT_FOUND)
+                #price = medicine_data.price
                 mycart_item_obj = MyCartItem.objects.filter(medicine=request.data.get('medicine'),
                                                             mycart=mycart_obj).first()
-            else:
+                request.data['item_choice'] = "MEDICINE"
+
+                if medicine_data.is_prescription == True and not request.data.get('prescription') and not mycart_item_obj:
+                    return Response({"message": Messages.PRESCRIPTION_REQUIRED},
+                                     status=status.HTTP_428_PRECONDITION_REQUIRED)
+            if request.data.get('lab_test'):
+                lab_test_data = LabTest.objects.filter(id=request.data.get('lab_test')).first()
+                if not lab_test_data:
+                    return Response({"message": Messages.NO_LAB_TEST},
+                                     status=status.HTTP_404_NOT_FOUND)
+                #price = lab_test_data.price
                 mycart_item_obj = MyCartItem.objects.filter(lab_test=request.data.get('lab_test'),
                                                             mycart=mycart_obj).first()
+                request.data['item_choice'] = "LAB_TEST"
             if mycart_item_obj:
-                mycart_item_obj.quantity += int(request.data.get('quantity'))
+                #price = mycart_item_obj.total_price / mycart_item_obj.quantity
+                quantity = mycart_item_obj.quantity + int(request.data.get('quantity'))
+                mycart_item_obj.quantity = quantity
+                #mycart_item_obj.total_price = quantity * price
                 mycart_item_obj.save()
-                print(mycart_item_obj.quantity)
-                return Response({"message": Messages.CART_ITEM_SAVED},
-                             status=status.HTTP_200_OK)
-            request.data._mutable = True
+                return Response({"message": Messages.CART_ITEM_QUANTITY_INCREASED},
+                                 status=status.HTTP_200_OK)
             request.data['mycart'] = mycart_obj.id
+            #request.data['total_price'] = int(request.data.get('quantity')) * int(price)
             request.data._mutable = False
             serialize_data = MyCartItemSerializer(data=request.data)
-           
             if serialize_data.is_valid(raise_exception=True):
                 serialize_data.save()
             return Response({"message": Messages.CART_ITEM_SAVED},
@@ -699,3 +723,41 @@ class MyCartItemView(APIView):
         mycart_item_obj.save()
         return Response({"message": Messages.CART_ITEM_QUANTITY_DECREASED},
                          status=status.HTTP_200_OK)
+
+
+class OrderSummary(APIView):
+    """Get order summary"""
+    permission_classes = [IsPatient, IsTokenValid]
+    def get(self, request):
+        try:
+            medicine_cartitem_obj = MyCartItem.objects.filter(mycart__patient_cart=request.user.patient_profile,
+                                                              item_choice="MEDICINE")
+            labtest_cartitem_obj = MyCartItem.objects.filter(mycart__patient_cart=request.user.patient_profile,
+                                                             item_choice="LAB_TEST")
+            if not medicine_cartitem_obj.exists() and not labtest_cartitem_obj.exists():
+                return Response({"message": Messages.CARTITEM_NOT_EXIST},
+                                 status=status.HTTP_404_NOT_FOUND)
+            medicine_serialize_data = GetMyCartItemSerializer(medicine_cartitem_obj, many=True)
+            medicine_serialize_data = medicine_serialize_data.data
+            total_medical_price = MyCartItem.objects.filter(item_choice="MEDICINE").annotate(
+                                medical_price=Sum('medicine__price') * Sum('quantity')).aggregate(
+                                total_medical_price=Sum('medical_price'))
+            medicine_serialize_data.append(total_medical_price)
+            labtest_serialize_data = GetMyCartItemSerializer(labtest_cartitem_obj, many=True)
+            labtest_serialize_data = labtest_serialize_data.data
+            total_labtest_price = MyCartItem.objects.filter(item_choice="LAB_TEST").annotate(
+                                labtest_price=Sum('lab_test__price') * Sum('quantity')).aggregate(
+                                total_labtest_price=Sum('labtest_price'))
+            labtest_serialize_data.append(total_labtest_price)
+            medicine_serialize_data.append(labtest_serialize_data)
+            extra_data = {}
+            extra_data['total_payable'] = total_medical_price['total_medical_price'] + total_labtest_price['total_labtest_price']
+            date = datetime.now() + timedelta(days=1)
+            extra_data['expected_date'] = date.strftime("%d %b %Y")
+            address_data = Address.objects.filter(patient=request.user.patient_profile).first()
+            extra_data['address'] = AddressSerializer(address_data).data
+            medicine_serialize_data.append(extra_data)
+            return Response(medicine_serialize_data, status=status.HTTP_200_OK)
+        except Exception as exception:
+            return Response({"error": str(exception)},
+                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)

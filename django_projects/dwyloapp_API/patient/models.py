@@ -2,7 +2,9 @@
 from django.db import models
 from accounts.models import UserAccount
 from core.models import Base
-
+from django.core.exceptions import ValidationError
+from project.config.messages import Messages
+from rest_framework import status
 
 class PatientProfile(Base, models.Model):
 	patient = models.OneToOneField(UserAccount, related_name='patient_profile', on_delete=models.CASCADE)
@@ -107,6 +109,7 @@ class Medicine(Base):
 	solubility = models.CharField(max_length=50)
 	company = models.CharField(max_length=100)
 	price = models.FloatField()
+	is_prescription = models.BooleanField(default=False)
 
 	def __str__(self):
 		return str(self.name)
@@ -139,9 +142,44 @@ class MyCartItem(Base):
 	medicine = models.ForeignKey(Medicine, related_name="medicine_cart", on_delete=models.CASCADE, null=True, blank=True)
 	lab_test = models.ForeignKey(LabTest, related_name="lab_test", on_delete=models.CASCADE, null=True, blank=True)
 	quantity = models.IntegerField(null=True, blank=True)
+	#total_price = models.FloatField(default=0, blank=True, null=True)
 	address = models.ForeignKey(Address, related_name="address_cart", on_delete=models.CASCADE)
 	prescription = models.FileField(upload_to = 'file/', blank=True, null=True)
 	item_choice = models.CharField(max_length=50, choices=ITEM_CHOICE, null=True, blank=True)
 
 	def __str__(self):
 		return str(self.mycart)
+
+
+	def save(self, *args, **kwargs):
+		if self.medicine and self.lab_test:
+			raise ValidationError(Messages.ONE_ITEM_ADD)
+		if not self.medicine and not self.lab_test:
+			raise ValidationError(Messages.NO_ITEM)
+		else:
+			super(MyCartItem, self).save(*args, **kwargs)
+
+
+
+
+class OrderCart(Base):
+	mycart_order = models.ForeignKey(MyCart, related_name='mycart_order', on_delete=models.CASCADE)
+
+	def __str__(self):
+		return str(self.order_cart)
+
+
+class OrderItemConfirmed(Base):
+	COMPLETED = "COMPLETED"
+	YET_TO_BE_DELIVERED = "YET_TO_BE_DELIVERED"
+	CANCLE = "CANCLE"
+	STATUS_CHOICE = (
+		(COMPLETED, "Completed"),
+		(YET_TO_BE_DELIVERED, "Yet to be delivered"),
+		(CANCLE, "Cancle")
+	)
+	order = models.ForeignKey(OrderCart, related_name='order_cart', on_delete=models.CASCADE)
+	item = models.ForeignKey(MyCartItem, related_name='cart_item', on_delete=models.CASCADE)
+	status = models.CharField(max_length=50, choices=STATUS_CHOICE, default=YET_TO_BE_DELIVERED)
+	order_date = models.DateTimeField(auto_now=True, null=True, blank=True)
+	delivery_date = models.DateTimeField(null=True, blank=True) 
