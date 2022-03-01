@@ -1,8 +1,10 @@
 from rest_framework import serializers
 from accounts.models import UserAccount
-from project.utility.send_otp_email import send_otp_email_verify
+from utility.send_otp_email import send_otp_email_verify
+
 
 class AdminSerializer(serializers.ModelSerializer):
+    
     class Meta:
         model = UserAccount
         fields = ['email','name','mobile_no','role','password', 'offer']#"__all__"

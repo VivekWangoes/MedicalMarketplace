@@ -5,12 +5,11 @@ from rest_framework.permissions import IsAuthenticated,AllowAny,IsAdminUser
 from rest_framework.response import Response
 from rest_framework import status
 import time
+from .permissions import IsTokenValid,IsDoctor,IsPatient
 from rest_framework_jwt.settings import api_settings
 from .models import UserAccount,BlackListedToken, ContactSupport
-from .permissions import IsTokenValid,IsDoctor,IsPatient
 from .serializers import ContactSupportSerializer, UserSerializerForView
 from datetime import datetime
-# from django.utils import timezone
 from django.core.mail import EmailMultiAlternatives
 from cerberus import Validator
 from django.utils.encoding import force_bytes, force_text
@@ -21,16 +20,18 @@ from django.contrib.auth.hashers import make_password
 from django.contrib import messages
 from django.template.loader import render_to_string
 from django.contrib.sites.shortcuts import get_current_site
-from project.utility.send_otp_email import send_otp_email_verify, send_otp_login
-from project.config.messages import Messages
+from utility.send_otp_email import send_otp_email_verify, send_otp_login
+from config.messages import Messages
 from datetime import datetime, timezone
 from django.db import transaction
 from project.settings.dev import EMAIL_HOST_USER
-
 # Create your views here.
+
+
 class VerifyEmail(APIView):
     """This class is used for verify email"""
     permission_classes = [AllowAny, ]
+
     def post(self, request):
         try:
             current_time = datetime.now(timezone.utc)
@@ -49,7 +50,7 @@ class VerifyEmail(APIView):
                                  status=status.HTTP_408_REQUEST_TIMEOUT)
 
             if user_obj.is_email_verified == True:
-                return Response({'message': Messages.ALREADY_EMAIL_VERIFIED}, 
+                return Response({'message': Messages.EMAIL_AlREADY_VERIFIED}, 
                                  status=status.HTTP_208_ALREADY_REPORTED)
             
             with transaction.atomic():
@@ -84,6 +85,7 @@ class VerifyEmail(APIView):
 class LoginWithOTP(APIView):
     """This class is used for  login with otp"""
     permission_classes = [AllowAny, ]
+
     def post(self, request):
         try:
             user_obj = UserAccount.objects.filter(login_otp=request.data.get('otp')).first()
@@ -140,6 +142,7 @@ class LoginWithOTP(APIView):
 class SignIn(APIView):
     """This class is used for user signin"""
     permission_classes = [AllowAny, ]
+
     def post(self, request):
             email = request.data.get('email')
             password = request.data.get('password')
@@ -172,11 +175,10 @@ class SignIn(APIView):
                                  status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-from .serializers import UserSerializer
 class UsersView(APIView):
     """For get all users"""
-    #permission_classes = [IsAdminUser, IsTokenValid]
     permission_classes = [IsAdminUser]
+
     def get(self,request):
         user_data = UserAccount.objects.all()
         serialize_data = UserSerializerForView(user_data, many=True)
@@ -186,6 +188,7 @@ class UsersView(APIView):
 class UserLogout(APIView):
     """This class is used for user logout"""
     permission_classes = [IsAuthenticated, IsTokenValid]
+
     def post(self,request):
         try:
             with transaction.atomic():
@@ -204,6 +207,7 @@ class ContactSupportQueryView(APIView):
     Admin can access this class
     """
     permission_classes = [IsAdminUser, ]
+
     def get(self,request):
         try:
             user_data = ContactSupport.objects.all()
@@ -217,6 +221,7 @@ class ContactSupportQueryView(APIView):
 class ContactSupportQueryRegister(APIView):
     """This class is used for saving users query"""
     permission_classes = [AllowAny, ]
+
     def post(self, request):
         try:
             with transaction.atomic():
@@ -256,6 +261,7 @@ def change_password(request, uidb64=None, token=None):
 class ForgotPassword(APIView):
     """send forgot password link to user"""
     permission_classes = [AllowAny, ]
+    
     def post(self, request):
         try:
             schema = {

@@ -1,14 +1,12 @@
 from rest_framework import serializers
 from accounts.models import UserAccount
-from accounts.views import send_otp_email_verify
-from project.utility.send_otp_email import send_otp_email_verify
+from utility.send_otp_email import send_otp_email_verify
 from django.db import transaction
-from .models import PatientProfile, Allergy, Medication, Disease, Injury,\
-      Surgery, PatientMedicalProfile, PatientLifeStyle, Address, MyCartItem,\
-      Medicine, MyCart, LabTest
+from .models import *
 
 
 class PatientSerializer(serializers.ModelSerializer):
+
     class Meta:
         model = UserAccount
         fields = ['id', 'email', 'name', 'mobile_no', 'role', 'offer']
@@ -16,6 +14,7 @@ class PatientSerializer(serializers.ModelSerializer):
 
 class PatientProfileSerializer(serializers.ModelSerializer):
     patient = PatientSerializer()
+
     class Meta:
         model = PatientProfile
         fields = (
@@ -58,36 +57,42 @@ class PatientProfileSerializer(serializers.ModelSerializer):
 
 
 class AllergySerializer(serializers.ModelSerializer):
+
     class Meta:
         model = Allergy
         fields = "__all__"
 
 
 class MedicationSerializer(serializers.ModelSerializer):
+
     class Meta:
         model = Medication
         fields = "__all__"
 
 
 class DiseaseSerializer(serializers.ModelSerializer):
+
     class Meta:
         model = Disease
         fields = "__all__"
 
 
 class InjurySerializer(serializers.ModelSerializer):
+
     class Meta:
         model = Injury
         fields = "__all__"
 
 
 class SurgerySerializer(serializers.ModelSerializer):
+
     class Meta:
         model = Surgery
         fields = "__all__"
 
 
 class PatientMedicalProfileSerializer(serializers.ModelSerializer):
+
     class Meta:
         model = PatientMedicalProfile
         fields = "__all__"
@@ -100,9 +105,8 @@ class PatientMedicalProfileSerializer(serializers.ModelSerializer):
         return instance
 
 
-
-
 class PatientLifeStyleSerializer(serializers.ModelSerializer):
+
     class Meta:
         model = PatientLifeStyle
         fields = "__all__"
@@ -121,6 +125,7 @@ class PatientCompleteProfileSerializer(serializers.ModelSerializer):
     patient = PatientSerializer()
     patient_medical_profile = PatientMedicalProfileSerializer()
     patient_life_style = PatientLifeStyleSerializer()
+
     class Meta:
         model  = PatientProfile
         fields = (
@@ -138,18 +143,21 @@ class PatientCompleteProfileSerializer(serializers.ModelSerializer):
 
 
 class AddressSerializer(serializers.ModelSerializer):
+
     class Meta:
         model = Address
         fields = "__all__"
 
 
 class MedicineSerializer(serializers.ModelSerializer):
+
     class Meta:
         model = Medicine
         fields = "__all__"
 
 
 class LabTestSerializer(serializers.ModelSerializer):
+
     class Meta:
         model = LabTest
         fields = "__all__"
@@ -157,12 +165,14 @@ class LabTestSerializer(serializers.ModelSerializer):
 
 class MyCartSerializer(serializers.ModelSerializer):
     #patient = PatientProfileSerializer()
+
     class Meta:
         model = MyCart
         fields = "__all__"#['patient']
 
 
 class MyCartItemSerializer(serializers.ModelSerializer):
+
     class Meta:
         model = MyCartItem
         fields = "__all__"
@@ -173,6 +183,7 @@ class GetMyCartItemSerializer(serializers.ModelSerializer):
     #address = AddressSerializer()
     medicine = MedicineSerializer()
     lab_test = LabTestSerializer()
+
     class Meta:
         model = MyCartItem
         fields = (
@@ -184,11 +195,13 @@ class GetMyCartItemSerializer(serializers.ModelSerializer):
             "prescription"
         )
 
+
 class OrderSummarySerializer(serializers.ModelSerializer):
     mycart = MyCartSerializer()
     address = AddressSerializer()
     medicine = MedicineSerializer()
     lab_test = LabTestSerializer()
+
     class Meta:
         model = MyCartItem
         fields = (
@@ -198,4 +211,25 @@ class OrderSummarySerializer(serializers.ModelSerializer):
             "lab_test",
             "quantity",
             "prescription"
+        )
+
+
+class CouponSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Coupon
+        fields = "__all__"
+
+
+class MyCouponSerializer(serializers.ModelSerializer):
+    #patient_coupon = PatientProfileSerializer()
+    coupon = CouponSerializer()
+
+    class Meta:
+        model = MyCoupon
+        fields = (
+            #"patient_coupon",
+            "coupon",
+            "coupon_code",
+            "is_used"
         )

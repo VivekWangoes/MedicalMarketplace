@@ -124,30 +124,13 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/3.1/howto/static-files/
 
 DEFAULT_AUTO_FIELD = 'django.db.models.AutoField'
+
 MEDIA_ROOT =  os.path.join(BASE_DIR, 'media')
 MEDIA_URL = '/media/'
 
-# STATIC_URL = '/static/'
-# STATIC_ROOT = os.path.join(BASE_DIR, 'static')
-# print('#####', STATIC_ROOT)
-
-
-# STATICFILES_DIRS = [
-#     'STATIC_ROOT'
-# ]
 
 STATIC_URL = '/static/'
-
-# Add these new lines
 STATICFILES_DIRS = (
     os.path.join(BASE_DIR, 'static'),
 )
-
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-
-
-# from corsheaders.defaults import default_headers
-
-# CORS_ALLOW_HEADERS = default_headers + (
-#     'Access-Control-Allow-Origin',
-# )

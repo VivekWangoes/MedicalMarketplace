@@ -2,6 +2,7 @@ from rest_framework.permissions import BasePermission
 from accounts.models import BlackListedToken
 from accounts.models import UserAccount
 
+
 class IsTokenValid(BasePermission):
     def has_permission(self, request, view):           
         is_allowed_user = True

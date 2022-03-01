@@ -3,8 +3,9 @@ from django.db import models
 from accounts.models import UserAccount
 from core.models import Base
 from django.core.exceptions import ValidationError
-from project.config.messages import Messages
+from config.messages import Messages
 from rest_framework import status
+
 
 class PatientProfile(Base, models.Model):
 	patient = models.OneToOneField(UserAccount, related_name='patient_profile', on_delete=models.CASCADE)
@@ -36,18 +37,21 @@ class Medication(Base, models.Model):
 
 class Disease(Base, models.Model):
 	name = models.CharField(max_length=255, null=True, blank=True)
+
 	def __str__(self):
 		return str(self.name)
 
 
 class Injury(Base, models.Model):
 	name = models.CharField(max_length=255, null=True, blank=True)
+
 	def __str__(self):
 		return str(self.name)
 
 
 class Surgery(Base, models.Model):
 	name = models.CharField(max_length=255, null=True, blank=True)
+
 	def __str__(self):
 		return str(self.name)
 
@@ -137,7 +141,6 @@ class MyCartItem(Base):
 		(MEDICINE, "Medicine"),
 		(LAB_TEST, "Lab_Test")
 	)
-
 	mycart = models.ForeignKey(MyCart, related_name="mycart", on_delete=models.CASCADE)
 	medicine = models.ForeignKey(Medicine, related_name="medicine_cart", on_delete=models.CASCADE, null=True, blank=True)
 	lab_test = models.ForeignKey(LabTest, related_name="lab_test", on_delete=models.CASCADE, null=True, blank=True)
@@ -150,14 +153,58 @@ class MyCartItem(Base):
 	def __str__(self):
 		return str(self.mycart)
 
-
 	def save(self, *args, **kwargs):
 		if self.medicine and self.lab_test:
-			raise ValidationError(Messages.ONE_ITEM_ADD)
+			raise ValidationError(Messages.ADD_ONE_ITEM)
 		if not self.medicine and not self.lab_test:
-			raise ValidationError(Messages.NO_ITEM)
+			raise ValidationError(Messages.ITEM_NOT_GIVEN)
 		else:
 			super(MyCartItem, self).save(*args, **kwargs)
+
+
+
+class Coupon(Base):
+	DISCOUNT_OFF = "DISCOUNT_OFF"
+	RUPEES_OFF = "RUPEES_OFF"
+	coupon_choice = (
+		(DISCOUNT_OFF, "DISCOUNT_OFF"),
+		(RUPEES_OFF, "RUPEES_OFF")
+	)
+	coupon_choice = models.CharField(max_length=50, choices=coupon_choice)
+	flat_off = models.IntegerField()
+	minimum_cart_amount = models.IntegerField()
+	upto_off = models.IntegerField(null=True, blank=True)
+	new_coupon_min_ammount = models.IntegerField(null=True, blank=True)
+	valid_upto = models.DateTimeField(null=True, blank=True)
+
+	def __str__(self):
+		return str(self.coupon_choice)
+
+
+class MyCoupon(Base):
+	EXPIRED = "EXPIRED"
+	NOT_EXPIRED = "NOT_EXPIRED"
+	coupon_status = (
+		(EXPIRED, "EXPIRED"),
+		(NOT_EXPIRED, "NOT_EXPIRED")
+	)
+	patient_coupon = models.ForeignKey(PatientProfile, related_name='patient_coupon', on_delete=models.CASCADE)
+	coupon = models.ForeignKey(Coupon, related_name='coupon', on_delete=models.CASCADE, null=True, blank=True)
+	#labtest_coupon = models.ForeignKey(LabTestCoupon, related_name='labtest_coupon', on_delete=models.CASCADE)
+	coupon_code = models.CharField(max_length=50)
+	coupon_status = models.CharField(max_length=50, choices=coupon_status, null=True, blank=True)
+	is_used = models.BooleanField(default=False)
+
+	def __str__(self):
+		return str(self.patient_coupon)
+
+
+
+
+
+
+
+
 
 
 

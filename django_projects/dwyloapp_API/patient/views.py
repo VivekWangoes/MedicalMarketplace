@@ -3,34 +3,32 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated,AllowAny
 from rest_framework import status
-from project.config.messages import Messages
+from config.messages import Messages
 from cerberus import Validator
 from django.db import transaction
 from django.db.models import Sum, Count
-from project.utility.send_otp_email import send_otp_email_verify
+from utility.send_otp_email import send_otp_email_verify
 import math
+import string
+import random
 from datetime import datetime, timedelta, timezone
 from .permissions import IsPatient, IsTokenValid
 from accounts.models import UserAccount
-from .models import PatientProfile, Allergy, Medication, Disease, Injury,\
-      Surgery, PatientMedicalProfile, PatientLifeStyle, Address, Medicine,\
-      MyCart, MyCartItem, LabTest
-from .serializers import PatientProfileSerializer, PatientMedicalProfileSerializer,\
-     PatientLifeStyleSerializer, AllergySerializer, MedicationSerializer,\
-     DiseaseSerializer, InjurySerializer, SurgerySerializer, PatientCompleteProfileSerializer,\
-     AddressSerializer, MyCartItemSerializer, GetMyCartItemSerializer, MedicineSerializer, MyCartSerializer,\
-     LabTestSerializer, OrderSummarySerializer
-from doctor.models import DoctorProfile, DoctorAvailability, DoctorSlot,\
-     DoctorReview, Appointment#ConsultationDetail,
-from doctor.serializers import DoctorProfileSerializer, DoctorAvailabilitySerializer,\
-     ConfirmAppointmentsSerializer, AppointmentsSerializer, DoctorReviewsSerializer,\
-     ConsultationSerializer, ConsultationDetailSerializer
+from .models import *
+from .serializers import *
+from doctor.models import(DoctorProfile, DoctorAvailability, DoctorSlot,
+                          DoctorReview, Appointment, ConsultationDetail)
+from doctor.serializers import(DoctorProfileSerializer, DoctorAvailabilitySerializer,
+                               ConfirmAppointmentsSerializer, AppointmentsSerializer, 
+                               DoctorReviewsSerializer,ConsultationSerializer, 
+                               ConsultationDetailSerializer)
 # Create your views here.
 
 
 class PatientRegister(APIView):
     """This class is used for Patient register """
     permission_classes = [AllowAny, ]
+
     def post(self, request):
         try:
             schema = {
@@ -72,12 +70,18 @@ class PatientRegister(APIView):
                 return Response({'error': str(exception)},
                                  status = status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+
 class PatientProfileView(APIView):
     """patient personal profile update"""
     permission_classes = [IsPatient, IsAuthenticated]
+
     def get(self, request):
-        serialize_data = PatientProfileSerializer(request.user.patient_profile)
-        return Response(serialize_data.data, status=status.HTTP_200_OK)
+        try:
+            serialize_data = PatientProfileSerializer(request.user.patient_profile)
+            return Response(serialize_data.data, status=status.HTTP_200_OK)
+        except Exception as exception:
+                return Response({'error': str(exception)},
+                                 status = status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def put(self, request):
         try:
@@ -96,6 +100,7 @@ class PatientProfileView(APIView):
 class AllergyView(APIView):
     """Get all Allergy"""
     permission_classes = [IsPatient, IsTokenValid]
+
     def get(self, request):
         allergy_data = Allergy.objects.all()
         serialize_data = AllergySerializer(alergies_data, many=True)
@@ -105,6 +110,7 @@ class AllergyView(APIView):
 class MedicationView(APIView):
     """Get all Medication"""
     permission_classes = [IsPatient, IsTokenValid]
+
     def get(self, request):
         medication_data = Medication.objects.all()
         serialize_data = MedicationSerializer(medication_data, many=True)
@@ -114,6 +120,7 @@ class MedicationView(APIView):
 class DiseaseView(APIView):
     """Get all Disease"""
     permission_classes = [IsPatient, IsTokenValid]
+
     def get(self, request):
         disease_data = Disease.objects.all()
         serialize_data = DiseaseSerializer(disease_data, many=True)
@@ -123,6 +130,7 @@ class DiseaseView(APIView):
 class InjuryView(APIView):
     """Get all Injury"""
     permission_classes = [IsPatient, IsTokenValid]
+
     def get(self, request):
         injury_data = Injury.objects.all()
         serialize_data = InjurySerializer(injury_data, many=True)
@@ -132,6 +140,7 @@ class InjuryView(APIView):
 class SurgeryView(APIView):
     """Get all surgery"""
     permission_classes = [IsPatient, IsTokenValid]
+
     def get(self, request):
         surgery_data = Surgery.objects.all()
         serialize_data = SurgerySerializer(surgery_data, many=True)
@@ -141,6 +150,7 @@ class SurgeryView(APIView):
 class PatientMedicalProfileView(APIView):
     """patient medical profile update"""
     permission_classes = [IsPatient, IsAuthenticated]
+
     def get(self, request):
         serialize_data = PatientMedicalProfileSerializer(request.user.patient_profile.patient_medical_profile)
         return Response(serialize_data.data, status=status.HTTP_200_OK)
@@ -183,9 +193,14 @@ class PatientMedicalProfileView(APIView):
 class PatientLifeStyleView(APIView):
     """patient life style profile update"""
     permission_classes = [IsPatient, IsAuthenticated]
+
     def get(self, request):
-        serialize_data = PatientLifeStyleSerializer(request.user.patient_profile.patient_life_style)
-        return Response(serialize_data.data, status=status.HTTP_200_OK)
+        try:
+            serialize_data = PatientLifeStyleSerializer(request.user.patient_profile.patient_life_style)
+            return Response(serialize_data.data, status=status.HTTP_200_OK)
+        except Exception as exception:
+                return Response({'error': str(exception)},
+                                 status = status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def put(self, request):
         try:
@@ -203,24 +218,30 @@ class PatientLifeStyleView(APIView):
 class PatientCompleteProfile(APIView):
     """patient complete profile update"""
     permission_classes = [IsPatient, IsAuthenticated]
+
     def get(self, request):
-        serialize_data = PatientCompleteProfileSerializer(request.user.patient_profile).data
-        patient_profile = [key for key in serialize_data if serialize_data[key] is not None]
-        patient = dict(serialize_data['patient'])
-        patient = [key for key in patient if patient[key] is not None]
-        medical_profile = dict(serialize_data['patient_medical_profile'])
-        medical_profile = [key for key in medical_profile if medical_profile[key] is not None and medical_profile[key]]
-        life_style = dict(serialize_data['patient_life_style'])
-        life_style = [key for key in life_style if life_style[key] is not None]
-        complete_fields = (len(patient_profile)-3) + (len(patient)-1) + (len(medical_profile)-4) + (len(life_style)-4) 
-        percentage = math.ceil((complete_fields / 25) * 100)
-        serialize_data['complete_profile'] = str(percentage) + "%"
-        return Response(serialize_data, status=status.HTTP_200_OK)
+        try:
+            serialize_data = PatientCompleteProfileSerializer(request.user.patient_profile).data
+            patient_profile = [key for key in serialize_data if serialize_data[key] is not None]
+            patient = dict(serialize_data['patient'])
+            patient = [key for key in patient if patient[key] is not None]
+            medical_profile = dict(serialize_data['patient_medical_profile'])
+            medical_profile = [key for key in medical_profile if medical_profile[key] is not None and medical_profile[key]]
+            life_style = dict(serialize_data['patient_life_style'])
+            life_style = [key for key in life_style if life_style[key] is not None]
+            complete_fields = (len(patient_profile)-3) + (len(patient)-1) + (len(medical_profile)-4) + (len(life_style)-4) 
+            percentage = math.ceil((complete_fields / 25) * 100)
+            serialize_data['complete_profile'] = str(percentage) + "%"
+            return Response(serialize_data, status=status.HTTP_200_OK)
+        except Exception as exception:
+                return Response({'error': str(exception)},
+                                 status = status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class DoctorSearchBySpecialty(APIView):
     """This class is used for return Doctor based on speciality"""
     permission_classes = [IsPatient, IsTokenValid]
+
     def get(self, request):
         try:
             doctor_data = DoctorProfile.objects.filter(
@@ -231,8 +252,8 @@ class DoctorSearchBySpecialty(APIView):
             for count, data in enumerate(serialize_data):
                 doctor_user = UserAccount.objects.get(email=data['doctor']['email'])
                 slots = DoctorSlot.objects.filter(doctoravailability__doctor=doctor_user.doctor_profile,
-                                                   slot_time__gte=datetime.utcnow(),
-                                                   is_booked=False).order_by('slot_time')
+                                                  slot_time__gte=datetime.utcnow(),
+                                                  is_booked=False).order_by('slot_time')
                 
                 if slots:
                     serialize_data1[count]['next_availability'] = slots[0].slot_time
@@ -246,6 +267,7 @@ class DoctorSearchBySpecialty(APIView):
 class DoctorSearchByClinic(APIView):
     """This class is used for return Doctor based on clinic"""
     permission_classes = [IsPatient,IsTokenValid]
+
     def get(self, request):
         try:
             doctor_data = DoctorProfile.objects.filter(
@@ -256,8 +278,8 @@ class DoctorSearchByClinic(APIView):
             for count, data in enumerate(serialize_data):
                 doctor_user = UserAccount.objects.get(email=data['doctor']['email'])
                 slots = DoctorSlot.objects.filter(doctoravailability__doctor=doctor_user.doctor_profile,
-                                                   slot_time__gte=datetime.utcnow(),
-                                                   is_booked=False).order_by('slot_time')
+                                                  slot_time__gte=datetime.utcnow(),
+                                                  is_booked=False).order_by('slot_time')
                 
                 if slots:
                     serialize_data1[count]['next_availability'] = slots[0].slot_time
@@ -272,6 +294,7 @@ class DoctorSearchByClinic(APIView):
 class DoctorSearchByHealthConcern(APIView):
     """This class is used for return Doctor based on HealthConcern"""
     permission_classes = [IsPatient, IsTokenValid]
+
     def get(self, request):
         try:
             doctor_data = DoctorProfile.objects.all().filter(
@@ -282,8 +305,8 @@ class DoctorSearchByHealthConcern(APIView):
             for count, data in enumerate(serialize_data):
                 doctor_user = UserAccount.objects.get(email=data['doctor']['email'])
                 slots = DoctorSlot.objects.filter(doctoravailability__doctor=doctor_user.doctor_profile,
-                                                   slot_time__gte=datetime.utcnow(),
-                                                   is_booked=False).order_by('slot_time')
+                                                  slot_time__gte=datetime.utcnow(),
+                                                  is_booked=False).order_by('slot_time')
                 
                 if slots:
                     serialize_data1[count]['next_availability'] = slots[0].slot_time
@@ -298,6 +321,7 @@ class DoctorSearchByHealthConcern(APIView):
 class DoctorSearchByDoctors(APIView):
     """This class is used for return Doctor based on Doctors"""
     permission_classes = [IsPatient,IsTokenValid]
+
     def get(self, request):
         try:
             doctor_data = DoctorProfile.objects.filter(doctor__name__icontains=request.data.get('name'))
@@ -307,8 +331,8 @@ class DoctorSearchByDoctors(APIView):
             for count, data in enumerate(serialize_data):
                 doctor_user = UserAccount.objects.get(email=data['doctor']['email'])
                 slots = DoctorSlot.objects.filter(doctoravailability__doctor=doctor_user.doctor_profile,
-                                                   slot_time__gte=datetime.utcnow(),
-                                                   is_booked=False).order_by('slot_time')
+                                                  slot_time__gte=datetime.utcnow(),
+                                                  is_booked=False).order_by('slot_time')
                 
                 if slots:
                     serialize_data1[count]['next_availability'] = slots[0].slot_time
@@ -324,6 +348,7 @@ class DoctorSearchByDoctors(APIView):
 class DoctorAvailabilityProfile(APIView):
     """for getting particular doctor availabilities"""
     permission_classes = [IsPatient, IsTokenValid]
+
     def post(self, request):
         try:
             doctor_profile_obj = DoctorProfile.objects.filter(doctor__id=request.data.get('doctor_id')).first()
@@ -365,6 +390,7 @@ class DoctorAvailabilityProfile(APIView):
 class DoctorAvailabilityTimeSlot(APIView):
     """for search  particular doctor slots """
     permission_classes = [IsPatient, IsTokenValid]
+
     def post(self, request):
         try:
             doctor_data = DoctorProfile.objects.filter(doctor__id=request.data.get('doctor_id')).first()
@@ -397,6 +423,7 @@ class DoctorAvailabilityTimeSlot(APIView):
 class ConfirmAppointmentsView(APIView):
     """for saving confirm appointments details"""
     permission_classes = [IsPatient, IsTokenValid]
+
     def post(self, request):
         try:
             appointment_obj = Appointment.objects.filter(slot__id=request.data.get('slot_id')).first()
@@ -426,6 +453,7 @@ class ConfirmAppointmentsView(APIView):
 class UpcomingAppointments(APIView):
     """for getting upcoming appointments"""
     permission_classes = [IsPatient, IsTokenValid]
+
     def get(self, request):
         try:
             appointment_data = Appointment.objects.filter(patient=request.user.patient_profile,
@@ -440,6 +468,7 @@ class UpcomingAppointments(APIView):
 class CompletedAppointments(APIView):
     """for getting upcoming appointments"""
     permission_classes = [IsPatient, IsTokenValid]
+
     def get(self, request):
         try:
             appointment_data = Appointment.objects.filter(patient=request.user.patient_profile,
@@ -454,6 +483,7 @@ class CompletedAppointments(APIView):
 class CancleAppointment(APIView):
     """for cancle appointment"""
     permission_classes = [IsPatient, IsTokenValid]
+
     def post(self, request, id):
         try:
             appointment_obj = Appointment.objects.filter(id=id, status='UPCOMING').first()
@@ -474,6 +504,7 @@ class CancleAppointment(APIView):
 class DoctorReviewView(APIView):
     """write review by patient to doctor"""
     permission_classes = [IsPatient, IsTokenValid]
+
     def get(self, request):
         try:
             review_data  = DoctorReview.objects.filter(patient=request.user.patient_profile.id)
@@ -491,7 +522,7 @@ class DoctorReviewView(APIView):
                 return Response({"message":Messages.USER_NOT_EXISTS}, status=status.HTTP_404_NOT_FOUND)
             patient_profile_obj = DoctorReview.objects.filter(patient=request.user.patient_profile.id).first()
             if patient_profile_obj:
-                return Response({"message":Messages.ALREADY_WRITTEN}, status=status.HTTP_208_ALREADY_REPORTED)
+                return Response({"message":Messages.REVIEW_ALREADY_GIVEN}, status=status.HTTP_208_ALREADY_REPORTED)
             request.data['doctor'] = doctor_profile_obj.id
             request.data['patient'] = request.user.patient_profile.id
             request.data._mutable = False
@@ -538,6 +569,7 @@ class DoctorReviewView(APIView):
 class PatientConsultationDetail(APIView):
     """access consultation details"""
     permission_classes = [IsPatient, IsTokenValid]
+
     def get(self, request, id):
         try:
             appointment_data = ConsultationDetail.objects.get(appointment__id=id)
@@ -551,6 +583,7 @@ class PatientConsultationDetail(APIView):
 class AddressView(APIView):
     """get and post address"""
     permission_classes = [IsPatient, IsTokenValid]
+
     def get(self, request):
         try:
             address_data = Address.objects.filter(patient=request.user.patient_profile)
@@ -601,11 +634,12 @@ class AddressView(APIView):
 class MedicineView(APIView):
     """get all medicines"""
     permission_classes = [IsPatient, IsTokenValid]
+
     def get(self, request):
         try:
             medicine_data = Medicine.objects.filter(name__icontains=request.data['name'])
             if not medicine_data:
-                return Response({"message": Messages.NO_MEDICINE},
+                return Response({"message": Messages.MEDICINE_NOT_FOUND},
                                  status=status.HTTP_404_NOT_FOUND)
             serialize_data = MedicineSerializer(medicine_data, many=True)
             return Response(serialize_data.data, status=status.HTTP_200_OK)
@@ -613,14 +647,16 @@ class MedicineView(APIView):
             return Response({"error": str(exception)},
                              status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+
 class LabTestView(APIView):
     """get all lab tests"""
     permission_classes = [IsPatient, IsTokenValid]
+
     def get(self, request):
         try:
             lab_test_data = LabTest.objects.filter(name__icontains=request.data['name'])
             if not lab_test_data:
-                return Response({"message": Messages.NO_LAB_TEST},
+                return Response({"message": Messages.LAB_TEST_NOT_FOUND},
                                  status=status.HTTP_404_NOT_FOUND)
             serialize_data = LabTestSerializer(lab_test_data, many=True)
             return Response(serialize_data.data, status=status.HTTP_200_OK)
@@ -632,6 +668,7 @@ class LabTestView(APIView):
 class MyCartItemView(APIView):
     """Add Item to cart"""
     permission_classes = [IsPatient, IsTokenValid]
+
     def get(self, request):
         try:
             medicine_cartitem_obj = MyCartItem.objects.filter(mycart__patient_cart=request.user.patient_profile,
@@ -661,9 +698,8 @@ class MyCartItemView(APIView):
             if request.data.get('medicine'):
                 medicine_data = Medicine.objects.filter(id=request.data.get('medicine')).first()
                 if not medicine_data:
-                    return Response({"message": Messages.NO_MEDICINE},
+                    return Response({"message": Messages.MEDICINE_NOT_FOUND},
                                      status=status.HTTP_404_NOT_FOUND)
-                #price = medicine_data.price
                 mycart_item_obj = MyCartItem.objects.filter(medicine=request.data.get('medicine'),
                                                             mycart=mycart_obj).first()
                 request.data['item_choice'] = "MEDICINE"
@@ -674,22 +710,18 @@ class MyCartItemView(APIView):
             if request.data.get('lab_test'):
                 lab_test_data = LabTest.objects.filter(id=request.data.get('lab_test')).first()
                 if not lab_test_data:
-                    return Response({"message": Messages.NO_LAB_TEST},
+                    return Response({"message": Messages.LAB_TEST_NOT_FOUND},
                                      status=status.HTTP_404_NOT_FOUND)
-                #price = lab_test_data.price
                 mycart_item_obj = MyCartItem.objects.filter(lab_test=request.data.get('lab_test'),
                                                             mycart=mycart_obj).first()
                 request.data['item_choice'] = "LAB_TEST"
             if mycart_item_obj:
-                #price = mycart_item_obj.total_price / mycart_item_obj.quantity
                 quantity = mycart_item_obj.quantity + int(request.data.get('quantity'))
                 mycart_item_obj.quantity = quantity
-                #mycart_item_obj.total_price = quantity * price
                 mycart_item_obj.save()
                 return Response({"message": Messages.CART_ITEM_QUANTITY_INCREASED},
                                  status=status.HTTP_200_OK)
             request.data['mycart'] = mycart_obj.id
-            #request.data['total_price'] = int(request.data.get('quantity')) * int(price)
             request.data._mutable = False
             serialize_data = MyCartItemSerializer(data=request.data)
             if serialize_data.is_valid(raise_exception=True):
@@ -728,6 +760,7 @@ class MyCartItemView(APIView):
 class OrderSummary(APIView):
     """Get order summary"""
     permission_classes = [IsPatient, IsTokenValid]
+
     def get(self, request):
         try:
             medicine_cartitem_obj = MyCartItem.objects.filter(mycart__patient_cart=request.user.patient_profile,
@@ -739,13 +772,13 @@ class OrderSummary(APIView):
                                  status=status.HTTP_404_NOT_FOUND)
             medicine_serialize_data = GetMyCartItemSerializer(medicine_cartitem_obj, many=True)
             medicine_serialize_data = medicine_serialize_data.data
-            total_medical_price = MyCartItem.objects.filter(item_choice="MEDICINE").annotate(
+            total_medical_price = MyCartItem.objects.filter(mycart__patient_cart=request.user.patient_profile, item_choice="MEDICINE").annotate(
                                 medical_price=Sum('medicine__price') * Sum('quantity')).aggregate(
                                 total_medical_price=Sum('medical_price'))
             medicine_serialize_data.append(total_medical_price)
             labtest_serialize_data = GetMyCartItemSerializer(labtest_cartitem_obj, many=True)
             labtest_serialize_data = labtest_serialize_data.data
-            total_labtest_price = MyCartItem.objects.filter(item_choice="LAB_TEST").annotate(
+            total_labtest_price = MyCartItem.objects.filter(mycart__patient_cart=request.user.patient_profile, item_choice="LAB_TEST").annotate(
                                 labtest_price=Sum('lab_test__price') * Sum('quantity')).aggregate(
                                 total_labtest_price=Sum('labtest_price'))
             labtest_serialize_data.append(total_labtest_price)
@@ -761,3 +794,67 @@ class OrderSummary(APIView):
         except Exception as exception:
             return Response({"error": str(exception)},
                              status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
+# letters = list(string.ascii_letters+string.digits)
+# random.shuffle(letters)
+# code = [random.choice(letters) for i in range(10)]
+# random.shuffle(code)
+# code =  ''.join(code)
+class ApplyCoupon(APIView):
+    """for get and apply coupon"""
+    permission_classes = [IsPatient, IsTokenValid]
+
+    def get(self, request):
+        try:
+            mycoupon_data = MyCoupon.objects.filter(patient_coupon=request.user.patient_profile)
+            serialize_data = MyCouponSerializer(mycoupon_data, many=True)
+            return Response(serialize_data.data, status=status.HTTP_200_OK)
+        except Exception as exception:
+            return Response({"error": str(exception)},
+                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def post(self, request):
+        mycoupon = MyCoupon.objects.filter(patient_coupon=request.user.patient_profile,
+                                           coupon_code=request.data.get('coupon_code'),
+                                           coupon_status="NOT_EXPIRED", is_used=False).first()
+        if not mycoupon:
+            return Response({"message": Messages.COUPON_NOT_FOUND},
+                             status=status.HTTP_404_NOT_FOUND)
+        current_time = datetime.now(timezone.utc)
+        print(current_time, mycoupon.coupon.valid_upto)
+        if current_time > mycoupon.coupon.valid_upto:
+            mycoupon.coupon_status = "EXPIRED"
+            mycoupon.save()
+            return Response({"message":Messages.COUPON_EXPIRED},
+                             status=status.HTTP_408_REQUEST_TIMEOUT)
+        off = mycoupon.coupon.coupon_choice
+        total_medical_price = MyCartItem.objects.filter(mycart__patient_cart=request.user.patient_profile, item_choice="MEDICINE").annotate(
+                                                        medical_price=Sum('medicine__price') * Sum('quantity')).aggregate(
+                                                        total_medical_price=Sum('medical_price'))
+        total_labtest_price = MyCartItem.objects.filter(mycart__patient_cart=request.user.patient_profile, item_choice="LAB_TEST").annotate(
+                                                        labtest_price=Sum('lab_test__price') * Sum('quantity')).aggregate(
+                                                        total_labtest_price=Sum('labtest_price'))
+        total_amount = total_medical_price['total_medical_price'] + total_labtest_price['total_labtest_price']
+        if total_amount < mycoupon.coupon.minimum_cart_amount:
+                return Response({"message": Messages.COUPON_NOT_APPLICABLE},
+                                 status=status.HTTP_404_NOT_FOUND)
+        if off == "DISCOUNT_OFF":
+            discount_price = (mycoupon.coupon.flat_off/100) * total_amount
+            if discount_price > mycoupon.coupon.upto_off:
+                discount_price = mycoupon.coupon.upto_off
+            total_amount_payable = total_amount - discount_price
+        if off == "RUPEES_OFF":
+            discount_price = mycoupon.coupon.flat_off
+            total_amount_payable = total_amount - discount_price
+
+        return Response({"total payable": total_amount, 
+                         "saved rupees": discount_price, "total amount payable": total_amount_payable,})
+
+
+
+
+
+
+

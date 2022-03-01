@@ -6,7 +6,6 @@ from django_rest_passwordreset.signals import reset_password_token_created
 from django.core.mail import send_mail
 from project.settings.dev import EMAIL_HOST_USER
 from datetime import datetime
-
 from core.models import Base
 
 
@@ -78,7 +77,6 @@ class UserAccount(Base, AbstractBaseUser, PermissionsMixin):
     offer = models.BooleanField(default=False)
     term_condition = models.BooleanField(default=False)
     
-
     objects = UserAccountManager()
 
     USERNAME_FIELD = 'email'

@@ -1,12 +1,12 @@
 from rest_framework import serializers
 from accounts.models import UserAccount
-from .models import DoctorProfile, DoctorAvailability, DoctorSlot, Appointment,\
-     DoctorReview, ConsultationDetail
-from project.utility.send_otp_email import send_otp_email_verify
+from utility.send_otp_email import send_otp_email_verify
 from django.db import transaction
+from .models import *
 
 
 class DoctorSerializer(serializers.ModelSerializer):
+
     class Meta:
         model = UserAccount
         fields = (
@@ -21,6 +21,7 @@ class DoctorSerializer(serializers.ModelSerializer):
 
 class DoctorProfileSerializer(serializers.ModelSerializer):
     doctor = DoctorSerializer()
+
     class Meta:
         model = DoctorProfile
         fields = (
@@ -84,8 +85,8 @@ class DoctorProfileSerializer(serializers.ModelSerializer):
                 return instance
 
 
-
 class DoctorSlotSerializer(serializers.ModelSerializer):
+
     class Meta:
         model = DoctorSlot
         fields = '__all__'
@@ -93,6 +94,7 @@ class DoctorSlotSerializer(serializers.ModelSerializer):
 
 class DoctorAvailabilitySerializer(serializers.ModelSerializer):
     time_slot = DoctorSlotSerializer(many=True)
+
     class Meta:
         model = DoctorAvailability
         fields = (
@@ -105,6 +107,7 @@ class DoctorAvailabilitySerializer(serializers.ModelSerializer):
 
    
 class ConfirmAppointmentsSerializer(serializers.ModelSerializer):
+
     class Meta:
         model = Appointment
         fields = '__all__'    
@@ -115,6 +118,7 @@ class AppointmentsSerializer(serializers.ModelSerializer):
     doctor = DoctorProfileSerializer()
     patient = PatientProfileSerializer()
     slot = DoctorSlotSerializer()
+
     class Meta:
         model = Appointment
         fields = (
@@ -127,6 +131,7 @@ class AppointmentsSerializer(serializers.ModelSerializer):
 
 
 class ConsultationSerializer(serializers.ModelSerializer):
+
     class Meta:
         model = ConsultationDetail
         fields = "__all__"
@@ -143,6 +148,7 @@ class ConsultationSerializer(serializers.ModelSerializer):
 
 class ConsultationDetailSerializer(serializers.ModelSerializer):
     appointment = AppointmentsSerializer()
+
     class Meta:
         model = ConsultationDetail
         fields = (
@@ -157,6 +163,7 @@ class ConsultationDetailSerializer(serializers.ModelSerializer):
 
 
 class DoctorReviewsSerializer(serializers.ModelSerializer):
+
     class Meta:
         model = DoctorReview
         fields = "__all__"

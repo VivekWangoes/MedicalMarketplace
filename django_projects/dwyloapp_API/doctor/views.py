@@ -6,22 +6,19 @@ from rest_framework import status
 from datetime import datetime
 from cerberus import Validator
 from django.db import transaction
-from project.config.messages import Messages
-from project.utility.send_otp_email import send_otp_email_verify
+from config.messages import Messages
+from utility.send_otp_email import send_otp_email_verify
 from .permissions import IsDoctor, IsTokenValid
 from accounts.models import UserAccount
-from .serializers import DoctorProfileSerializer, DoctorReviewsSerializer,\
-     ConsultationDetailSerializer, ConsultationSerializer
-from .models import DoctorProfile, DoctorAvailability, DoctorSlot, DoctorReview,\
-     ConsultationDetail
-
-
+from .serializers import *
+from .models import *
 # Create your views here.
 
 
 class DoctorRegister(APIView):
     """This class is used for Doctor register"""
     permission_classes = [AllowAny, ]
+
     def post(self, request):
         try:
             schema = {
@@ -66,10 +63,13 @@ class DoctorRegister(APIView):
 class DoctorProfileView(APIView):
     """This class is used for get and update doctor profile"""
     permission_classes = [IsDoctor, IsTokenValid]
+
     def get(self, request):
-        print(request.user.doctor_profile)
-        serialize_data = DoctorProfileSerializer(request.user.doctor_profile)
-        return Response(serialize_data.data, status=status.HTTP_200_OK)
+        try:
+            serialize_data = DoctorProfileSerializer(request.user.doctor_profile)
+            return Response(serialize_data.data, status=status.HTTP_200_OK)
+        except Exception as exception:
+            return Response({"error": str(exception)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def put(self, request):
         try:
@@ -105,6 +105,7 @@ class DoctorProfileView(APIView):
 class DoctorAvailabilitySet(APIView):
     """This class is used for set doctor availability"""
     permission_classes = [IsDoctor, IsTokenValid]
+
     def post(self,request):
         try:
             schema = {
@@ -123,7 +124,7 @@ class DoctorAvailabilitySet(APIView):
                                                       slot_date=request.data.get('slot_date')).\
                                                       filter(time_slot__slot_time__in=request.data.get('slot_time'))
             if slots:
-                return Response({'message': Messages.ALREADY_DATETIME_PRESENT},
+                return Response({'message': Messages.DATETIME_ALREADY_PRESENT},
                                  status=status.HTTP_409_CONFLICT) 
             with transaction.atomic():
                 for slot in request.data.get('slot_time'):
@@ -152,6 +153,7 @@ class DoctorAvailabilitySet(APIView):
 class DoctorAllReview(APIView):
     """get all review by doctor"""
     permission_classes = [IsDoctor, IsTokenValid]
+
     def get(self, request):
         try:
             review_data  = DoctorReview.objects.filter(doctor=request.user.doctor_profile.id)
@@ -165,6 +167,7 @@ class DoctorAllReview(APIView):
 class ConsultationDetailView(APIView):
     """Give consultation detail given by doctor"""
     permission_classes = [IsDoctor, IsTokenValid]
+
     def get(self, request, id):
         try:
             consultation_data = ConsultationDetail.objects.get(appointment__id=id)
@@ -173,6 +176,7 @@ class ConsultationDetailView(APIView):
         except Exception as exception:
             return Response({"error": str(exception)},
                              status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
     def post(self, request, id):
         try:
             consultation_data = ConsultationDetail.objects.filter(appointment__id=id).first()

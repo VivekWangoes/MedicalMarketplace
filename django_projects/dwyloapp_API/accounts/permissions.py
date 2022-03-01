@@ -1,6 +1,7 @@
 from rest_framework.permissions import BasePermission
 from .models import BlackListedToken
 
+
 class IsTokenValid(BasePermission):
     """Check toke is valid or not"""
     def has_permission(self, request, view):
@@ -27,6 +28,7 @@ class IsDoctor(BasePermission):
                 False
         except:
             False
+
 
 class IsPatient(BasePermission):
     """Check requested user is patient or not"""
