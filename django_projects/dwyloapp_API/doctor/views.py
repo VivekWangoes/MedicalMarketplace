@@ -1,15 +1,18 @@
 from django.shortcuts import render
+from django.db import transaction
+from datetime import datetime
+
+from rest_framework.permissions import IsAuthenticated,AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.permissions import IsAuthenticated,AllowAny
 from rest_framework import status
-from datetime import datetime
 from cerberus import Validator
-from django.db import transaction
-from config.messages import Messages
+
+
 from utility.send_otp_email import send_otp_email_verify
-from .permissions import IsDoctor, IsTokenValid
+from config.messages import Messages
 from accounts.models import UserAccount
+from .permissions import IsDoctor, IsTokenValid
 from .serializers import *
 from .models import *
 # Create your views here.
@@ -17,7 +20,7 @@ from .models import *
 
 class DoctorRegister(APIView):
     """This class is used for Doctor register"""
-    permission_classes = [AllowAny, ]
+    permission_classes = [AllowAny,]
 
     def post(self, request):
         try:
@@ -37,20 +40,22 @@ class DoctorRegister(APIView):
             doctor_profile = request.data.get('doctor_profile',{})
             with transaction.atomic():
                 user_obj = UserAccount.objects.create_user(email=request.data.get('email'),
-                                                       name=request.data.get('name'),
-                                                       mobile_no=request.data.get('mobile_no'),
-                                                       password=request.data.get('password'),
-                                                       role=UserAccount.DOCTOR)
+                                                           name=request.data.get('name'),
+                                                           mobile_no=request.data.get('mobile_no'),
+                                                           password=request.data.get('password'),
+                                                           role=UserAccount.DOCTOR,
+                                                           offer=request.data.get('offer', False),
+                                                           term_condition=True)
                 user_obj.save()
                 doctor_profile_obj = DoctorProfile.objects.create(doctor=user_obj,
-                                                              gender=doctor_profile.get('gender'),
-                                                              career_started=doctor_profile.get('career_started'),
-                                                              specialty=doctor_profile.get('specialty'),
-                                                              location_city=doctor_profile.get('location_city'),
-                                                              clinic=doctor_profile.get('clinic'),
-                                                              consultation_fees=doctor_profile.get('consultation_fees'),
-                                                              expertise_area=doctor_profile.get('expertise_area'),
-                                                              booking_fees=doctor_profile.get('booking_fees'))
+                                                                  gender=doctor_profile.get('gender'),
+                                                                  career_started=doctor_profile.get('career_started'),
+                                                                  specialty=doctor_profile.get('specialty'),
+                                                                  location_city=doctor_profile.get('location_city'),
+                                                                  clinic=doctor_profile.get('clinic'),
+                                                                  consultation_fees=doctor_profile.get('consultation_fees'),
+                                                                  expertise_area=doctor_profile.get('expertise_area'),
+                                                                  booking_fees=doctor_profile.get('booking_fees'))
                 doctor_profile_obj.save()
                 send_otp_email_verify(user_obj.email, user_obj)
                 return Response({'message': Messages.ACCOUNT_CREATED},
@@ -118,8 +123,6 @@ class DoctorAvailabilitySet(APIView):
             if not v.validate(request.data, schema):
                 return Response({'error': v.errors},
                                  status=status.HTTP_400_BAD_REQUEST )
-
-
             slots = DoctorAvailability.objects.filter(doctor=request.user.doctor_profile,
                                                       slot_date=request.data.get('slot_date')).\
                                                       filter(time_slot__slot_time__in=request.data.get('slot_time'))
@@ -141,8 +144,6 @@ class DoctorAvailabilitySet(APIView):
                                                                   slot=request.data.get('slot'))
                     available.save()
                     available.time_slot.add(doctor_slot)
-                
-
             return Response({'message': Messages.AVAILABILITY_SET},
                              status=status.HTTP_200_OK)
         except Exception as exception:
@@ -157,6 +158,9 @@ class DoctorAllReview(APIView):
     def get(self, request):
         try:
             review_data  = DoctorReview.objects.filter(doctor=request.user.doctor_profile.id)
+            if not review_data:
+                return Response({"message":Messages.REVIEW_NOT_AVAILABLE},
+                                 status=status.HTTP_404_NOT_FOUND)
             serialize_data = DoctorReviewsSerializer(review_data, many=True).data
             return Response(serialize_data, status=status.HTTP_200_OK)
         except Exception as exception:
@@ -170,9 +174,12 @@ class ConsultationDetailView(APIView):
 
     def get(self, request, id):
         try:
-            consultation_data = ConsultationDetail.objects.get(appointment__id=id)
-            serialize_data = ConsultationDetailSerializer(consultation_data)
-            return Response(serialize_data.data, status=status.HTTP_200_OK)
+            consultation_data = ConsultationDetail.objects.filter(appointment__id=id).first()
+            if not consultation_data:
+                return Response({"message":Messages.CONSULTAION_NOT_GIVEN},
+                                 status=status.HTTP_404_NOT_FOUND)
+            serialize_data = ConsultationDetailSerializer(consultation_data).data
+            return Response(serialize_data, status=status.HTTP_200_OK)
         except Exception as exception:
             return Response({"error": str(exception)},
                              status=status.HTTP_500_INTERNAL_SERVER_ERROR)

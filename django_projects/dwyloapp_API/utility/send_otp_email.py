@@ -29,6 +29,7 @@ def send_otp_email_verify(email, user_obj):
                                         EMAIL_HOST_USER, [email, ])
         email.attach_alternative(html_content, 'text/html')
         email.send()
+        print('email send')
         return True
     except Exception as exception:
         return Response({"error": str(exception)},

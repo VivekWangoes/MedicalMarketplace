@@ -1,19 +1,21 @@
 from django.shortcuts import render
-from rest_framework.response import Response
-from rest_framework.views import APIView
-from rest_framework.permissions import IsAuthenticated,AllowAny
-from rest_framework import status
-from config.messages import Messages
-from cerberus import Validator
 from django.db import transaction
 from django.db.models import Sum, Count
-from utility.send_otp_email import send_otp_email_verify
+from datetime import datetime, timedelta, timezone
 import math
 import string
 import random
-from datetime import datetime, timedelta, timezone
-from .permissions import IsPatient, IsTokenValid
+
+from rest_framework.permissions import IsAuthenticated,AllowAny
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from rest_framework import status
+from cerberus import Validator
+
+from utility.send_otp_email import send_otp_email_verify
 from accounts.models import UserAccount
+from config.messages import Messages
+from .permissions import IsPatient, IsTokenValid
 from .models import *
 from .serializers import *
 from doctor.models import(DoctorProfile, DoctorAvailability, DoctorSlot,
@@ -27,7 +29,7 @@ from doctor.serializers import(DoctorProfileSerializer, DoctorAvailabilitySerial
 
 class PatientRegister(APIView):
     """This class is used for Patient register """
-    permission_classes = [AllowAny, ]
+    permission_classes = [AllowAny,]
 
     def post(self, request):
         try:
@@ -49,7 +51,9 @@ class PatientRegister(APIView):
                                                            name=request.data.get('name'),
                                                            mobile_no=request.data.get('mobile_no'),
                                                            password=request.data.get('password'),
-                                                           role=UserAccount.PATIENT)
+                                                           role=UserAccount.PATIENT,
+                                                           offer=request.data.get('offer', False),
+                                                           term_condition=True)
                 user_obj.save()
                 patient_profile_obj = PatientProfile.objects.create(patient=user_obj,
                                                                     gender=patient_profile.get('gender'),
@@ -103,7 +107,7 @@ class AllergyView(APIView):
 
     def get(self, request):
         allergy_data = Allergy.objects.all()
-        serialize_data = AllergySerializer(alergies_data, many=True)
+        serialize_data = AllergySerializer(allergy_data, many=True)
         return Response(serialize_data.data, status=status.HTTP_200_OK)
 
 
@@ -162,25 +166,24 @@ class PatientMedicalProfileView(APIView):
                              data=request.data, partial=True)
             if serialize_data.is_valid(raise_exception=True):
                 patient_obj = serialize_data.save()
-            #import pdb; pdb.set_trace()
             if request.data.get('alergies_data', ''):
                 ids = request.data.get('alergies_data').get('id',[])
-                alergy_obj = Allergy.objects.filter(name=request.data.get('alergies_data').get('new') if request.data.get('alergies_data').get('new') else [None, ]).first()
-               
+                alergy_obj = Allergy.objects.filter(
+                           name=request.data.get('alergies_data').get('new') if request.data.get('alergies_data').get('new') else [None, ]).first()
                 ids.append(alergy_obj.id) if alergy_obj else None
                 alergies_obj = Allergy.objects.filter(id__in=ids)
-                patient_obj.alergies.set(alergies_obj)
-                if alergy_obj:
-                    patient_obj.alergies.create(name=request.data.get('alergies_data')['new'])
+                patient_obj.allergies.set(alergies_obj)
+                if not alergy_obj:
+                    patient_obj.allergies.create(name=request.data.get('alergies_data')['new'])
             else:
                 alergies_obj = Allergy.objects.filter(id__in=[None, ])
-                patient_obj.alergies.set(alergies_obj)
+                patient_obj.allergies.set(alergies_obj)
             medication_obj = Medication.objects.filter(id__in=request.data.get('medication_data')  if request.data.get('medication_data') else [None, ])
-            patient_obj.medication.set(medication_obj)
+            patient_obj.medications.set(medication_obj)
             dieseas_obj = Disease.objects.filter(id__in=request.data.get('dieseas_data') if request.data.get('dieseas_data') else [None, ])
             patient_obj.cronic_dieseas.set(dieseas_obj)
             injury_obj = Injury.objects.filter(id__in=request.data.get('injuries_data') if request.data.get('injuries_data') else [None, ])
-            patient_obj.injuries.set(injuries_obj)
+            patient_obj.injuries.set(injury_obj)
             surgery_obj = Surgery.objects.filter(id__in=request.data.get('surgery_data') if request.data.get('surgery_data') else [None, ])
             patient_obj.surgeries.set(surgery_obj)      
             return Response({'message':Messages.PROFILE_UPDATED},
@@ -229,8 +232,8 @@ class PatientCompleteProfile(APIView):
             medical_profile = [key for key in medical_profile if medical_profile[key] is not None and medical_profile[key]]
             life_style = dict(serialize_data['patient_life_style'])
             life_style = [key for key in life_style if life_style[key] is not None]
-            complete_fields = (len(patient_profile)-3) + (len(patient)-1) + (len(medical_profile)-4) + (len(life_style)-4) 
-            percentage = math.ceil((complete_fields / 25) * 100)
+            complete_fields = (len(patient_profile)-3) + (len(patient)-3) + (len(medical_profile)-4) + (len(life_style)-4) 
+            percentage = math.ceil((complete_fields / 24) * 100)
             serialize_data['complete_profile'] = str(percentage) + "%"
             return Response(serialize_data, status=status.HTTP_200_OK)
         except Exception as exception:
@@ -245,7 +248,7 @@ class DoctorSearchBySpecialty(APIView):
     def get(self, request):
         try:
             doctor_data = DoctorProfile.objects.filter(
-                        specialty__iexact=request.data.get('specialty'))
+                        specialty__icontains=request.data.get('specialty'))
             serialize_data = DoctorProfileSerializer(doctor_data, many=True).data
             serialize_data1 = serialize_data
             next_availability = {}
@@ -254,7 +257,6 @@ class DoctorSearchBySpecialty(APIView):
                 slots = DoctorSlot.objects.filter(doctoravailability__doctor=doctor_user.doctor_profile,
                                                   slot_time__gte=datetime.utcnow(),
                                                   is_booked=False).order_by('slot_time')
-                
                 if slots:
                     serialize_data1[count]['next_availability'] = slots[0].slot_time
                 else:
@@ -280,7 +282,6 @@ class DoctorSearchByClinic(APIView):
                 slots = DoctorSlot.objects.filter(doctoravailability__doctor=doctor_user.doctor_profile,
                                                   slot_time__gte=datetime.utcnow(),
                                                   is_booked=False).order_by('slot_time')
-                
                 if slots:
                     serialize_data1[count]['next_availability'] = slots[0].slot_time
                 else:
@@ -307,7 +308,6 @@ class DoctorSearchByHealthConcern(APIView):
                 slots = DoctorSlot.objects.filter(doctoravailability__doctor=doctor_user.doctor_profile,
                                                   slot_time__gte=datetime.utcnow(),
                                                   is_booked=False).order_by('slot_time')
-                
                 if slots:
                     serialize_data1[count]['next_availability'] = slots[0].slot_time
                 else:
@@ -318,7 +318,7 @@ class DoctorSearchByHealthConcern(APIView):
                              status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-class DoctorSearchByDoctors(APIView):
+class DoctorSearchByName(APIView):
     """This class is used for return Doctor based on Doctors"""
     permission_classes = [IsPatient,IsTokenValid]
 
@@ -333,7 +333,6 @@ class DoctorSearchByDoctors(APIView):
                 slots = DoctorSlot.objects.filter(doctoravailability__doctor=doctor_user.doctor_profile,
                                                   slot_time__gte=datetime.utcnow(),
                                                   is_booked=False).order_by('slot_time')
-                
                 if slots:
                     serialize_data1[count]['next_availability'] = slots[0].slot_time
                 else:
@@ -361,7 +360,6 @@ class DoctorAvailabilityProfile(APIView):
                                                             time_slot__slot_time__date=datetime.utcnow().date(),
                                                             time_slot__slot_time__gte=datetime.utcnow(),
                                                             time_slot__is_booked=False).order_by('time_slot__slot_time')
-            
             serialize_data1['today_availability'] = DoctorAvailabilitySerializer(today_slots, many=True).data
             total_review = DoctorReview.objects.filter(doctor=doctor_profile_obj).count()
             if total_review:
@@ -412,7 +410,6 @@ class DoctorAvailabilityTimeSlot(APIView):
                                                                                                     datetime.utcnow().month, int(date), tzinfo=timezone.utc),
                                                                 time_slot__is_booked=False).order_by('time_slot__slot_time')
                 serialize_data1['today_availability'] = DoctorAvailabilitySerializer(today_slots, many=True).data
-
             return Response(serialize_data, status=status.HTTP_200_OK)
 
         except Exception as exception:
@@ -432,7 +429,7 @@ class ConfirmAppointmentsView(APIView):
                                  status=status.HTTP_208_ALREADY_REPORTED)
             slot_obj = DoctorSlot.objects.get(id=request.data.get('slot_id'))
             request.data._mutable = True
-            request.data['doctor'] = request.data.get('doctor_id')#doctor_obj.doctor_profile.id
+            request.data['doctor'] = request.data.get('doctor_profile_id')#doctor_obj.doctor_profile.id
             request.data['patient'] = request.user.patient_profile.id
             request.data['slot'] = slot_obj.id
             request.data['status'] = 'UPCOMING'
@@ -459,6 +456,9 @@ class UpcomingAppointments(APIView):
             appointment_data = Appointment.objects.filter(patient=request.user.patient_profile,
                                                           status="UPCOMING")
             serialize_data = AppointmentsSerializer(appointment_data, many=True).data
+            if not serialize_data:
+                return Response({"message": Messages.NO_UPCOMING_APPOINTMENT},
+                                 status=status.HTTP_404_NOT_FOUND)
             return Response(serialize_data, status=status.HTTP_200_OK)
         except Exception as exception:
             return Response({"error": str(exception)},
@@ -474,6 +474,9 @@ class CompletedAppointments(APIView):
             appointment_data = Appointment.objects.filter(patient=request.user.patient_profile,
                                                           status="COMPLETED")
             serialize_data = AppointmentsSerializer(appointment_data, many=True).data
+            if not serialize_data:
+                return Response({"message": Messages.NO_COMPLETED_APPOINTMENT},
+                                 status=status.HTTP_404_NOT_FOUND)
             return Response(serialize_data, status=status.HTTP_200_OK)
         except Exception as exception:
             return Response({"error": str(exception)},
@@ -484,9 +487,9 @@ class CancleAppointment(APIView):
     """for cancle appointment"""
     permission_classes = [IsPatient, IsTokenValid]
 
-    def post(self, request, id):
+    def post(self, request):
         try:
-            appointment_obj = Appointment.objects.filter(id=id, status='UPCOMING').first()
+            appointment_obj = Appointment.objects.filter(id=request.data.get('appointment_id'), status='UPCOMING').first()
             if appointment_obj:
                 appointment_obj.status = "CANCLE"
                 appointment_obj.save()
@@ -501,13 +504,16 @@ class CancleAppointment(APIView):
                              status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-class DoctorReviewView(APIView):
+class WriteReviewToDoctor(APIView):
     """write review by patient to doctor"""
     permission_classes = [IsPatient, IsTokenValid]
 
     def get(self, request):
         try:
             review_data  = DoctorReview.objects.filter(patient=request.user.patient_profile.id)
+            if not review_data:
+                return Response({"message":Messages.REVIEW_NOT_AVAILABLE},
+                                 status=status.HTTP_404_NOT_FOUND)
             serialize_data = DoctorReviewsSerializer(review_data, many=True).data
             return Response(serialize_data, status=status.HTTP_200_OK)
         except Exception as exception:
@@ -517,7 +523,7 @@ class DoctorReviewView(APIView):
     def post(self, request):
         try:
             request.data._mutable = True
-            doctor_profile_obj = DoctorProfile.objects.filter(id=request.data.get('doctor_id')).first()
+            doctor_profile_obj = DoctorProfile.objects.filter(id=request.data.get('doctor_profile_id')).first()
             if not doctor_profile_obj:
                 return Response({"message":Messages.USER_NOT_EXISTS}, status=status.HTTP_404_NOT_FOUND)
             patient_profile_obj = DoctorReview.objects.filter(patient=request.user.patient_profile.id).first()
@@ -532,7 +538,7 @@ class DoctorReviewView(APIView):
                 total_rating = int(review_obj.prescription_rating) + int(review_obj.explanation_rating)\
                              + int(review_obj.friendliness_rating) 
                 avg_rating = total_rating // 3
-                avg_rating = (doctor_profile_obj.rating+avg_rating) / 2
+                avg_rating = ((doctor_profile_obj.rating+avg_rating) / 2) if doctor_profile_obj.rating else avg_rating
                 doctor_profile_obj.rating = avg_rating
                 doctor_profile_obj.save()
                 return Response({"message":Messages.REVIEW_SAVED}, status=status.HTTP_200_OK)
@@ -543,6 +549,7 @@ class DoctorReviewView(APIView):
     def put(self, request):
         try:
             review_obj = DoctorReview.objects.filter(id=request.data.get('review_id')).first()
+            print(review_obj)
             if not review_obj:
                 return Response({"message":Messages.USER_NOT_EXISTS}, status=status.HTTP_404_NOT_FOUND)
             serialize_data = DoctorReviewsSerializer(instance=review_obj,
@@ -550,7 +557,7 @@ class DoctorReviewView(APIView):
             if serialize_data.is_valid(raise_exception=True):
                 serialize_data.save()
                 serialize_data = serialize_data.data
-                doctor_profile_obj = DoctorProfile.objects.filter(id=request.data.get('doctor_id')).first()
+                doctor_profile_obj = DoctorProfile.objects.filter(id=request.data.get('doctor_profile_id')).first()
                 if not doctor_profile_obj:
                     return Response({"message":Messages.USER_NOT_EXISTS}, status=status.HTTP_404_NOT_FOUND)
                 total_rating = int(serialize_data['prescription_rating']) + int(serialize_data['explanation_rating'])\
@@ -572,8 +579,12 @@ class PatientConsultationDetail(APIView):
 
     def get(self, request, id):
         try:
-            appointment_data = ConsultationDetail.objects.get(appointment__id=id)
-            serialize_data = ConsultationDetailSerializer(appointment_data)
+            print("$$$$",id)
+            consultation_data = ConsultationDetail.objects.filter(appointment__id=id).first()
+            if not consultation_data:
+                return Response({"message": Messages.CONSULTATION_NOT_EXIST},
+                                 status=status.HTTP_404_NOT_FOUND)
+            serialize_data = ConsultationDetailSerializer(consultation_data)
             return Response(serialize_data.data, status=status.HTTP_200_OK)
         except Exception as exception:
             return Response({"error": str(exception)},
@@ -703,10 +714,9 @@ class MyCartItemView(APIView):
                 mycart_item_obj = MyCartItem.objects.filter(medicine=request.data.get('medicine'),
                                                             mycart=mycart_obj).first()
                 request.data['item_choice'] = "MEDICINE"
-
-                if medicine_data.is_prescription == True and not request.data.get('prescription') and not mycart_item_obj:
-                    return Response({"message": Messages.PRESCRIPTION_REQUIRED},
-                                     status=status.HTTP_428_PRECONDITION_REQUIRED)
+                # if medicine_data.is_prescription == True and not request.data.get('prescription') and not mycart_item_obj:
+                #     return Response({"message": Messages.PRESCRIPTION_REQUIRED},
+                #                      status=status.HTTP_428_PRECONDITION_REQUIRED)
             if request.data.get('lab_test'):
                 lab_test_data = LabTest.objects.filter(id=request.data.get('lab_test')).first()
                 if not lab_test_data:
@@ -783,7 +793,14 @@ class OrderSummary(APIView):
                                 total_labtest_price=Sum('labtest_price'))
             labtest_serialize_data.append(total_labtest_price)
             medicine_serialize_data.append(labtest_serialize_data)
+            is_prescription = MyCartItem.objects.filter(mycart__patient_cart=request.user.patient_profile,
+                                                        item_choice="MEDICINE").filter(medicine__is_prescription=True)#.aggregate(is_prescription=Count('medicine__is_prescription'))
+            prescription = is_prescription.filter(prescription='')#filter(prescription__in=['', None])
+            prescription_added = False
+            if len(prescription) == 0:
+                prescription_added = True
             extra_data = {}
+            extra_data['prescription_added'] = prescription_added
             extra_data['total_payable'] = total_medical_price['total_medical_price'] + total_labtest_price['total_labtest_price']
             date = datetime.now() + timedelta(days=1)
             extra_data['expected_date'] = date.strftime("%d %b %Y")
@@ -796,12 +813,6 @@ class OrderSummary(APIView):
                              status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-
-# letters = list(string.ascii_letters+string.digits)
-# random.shuffle(letters)
-# code = [random.choice(letters) for i in range(10)]
-# random.shuffle(code)
-# code =  ''.join(code)
 class ApplyCoupon(APIView):
     """for get and apply coupon"""
     permission_classes = [IsPatient, IsTokenValid]
@@ -809,6 +820,9 @@ class ApplyCoupon(APIView):
     def get(self, request):
         try:
             mycoupon_data = MyCoupon.objects.filter(patient_coupon=request.user.patient_profile)
+            if not mycoupon_data:
+                return Response({"message": Messages.COUPON_NOT_AVAILABLE},
+                                 status=status.HTTP_404_NOT_FOUND)
             serialize_data = MyCouponSerializer(mycoupon_data, many=True)
             return Response(serialize_data.data, status=status.HTTP_200_OK)
         except Exception as exception:
@@ -820,7 +834,7 @@ class ApplyCoupon(APIView):
                                            coupon_code=request.data.get('coupon_code'),
                                            coupon_status="NOT_EXPIRED", is_used=False).first()
         if not mycoupon:
-            return Response({"message": Messages.COUPON_NOT_FOUND},
+            return Response({"message": Messages.COUPON_NOT_AVAILABLE},
                              status=status.HTTP_404_NOT_FOUND)
         current_time = datetime.now(timezone.utc)
         print(current_time, mycoupon.coupon.valid_upto)
@@ -857,4 +871,8 @@ class ApplyCoupon(APIView):
 
 
 
-
+# letters = list(string.ascii_letters+string.digits)
+# random.shuffle(letters)
+# code = [random.choice(letters) for i in range(10)]
+# random.shuffle(code)
+# code =  ''.join(code)

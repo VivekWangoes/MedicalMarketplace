@@ -15,7 +15,8 @@ class DoctorSerializer(serializers.ModelSerializer):
             'name',
             'mobile_no',
             'role',
-            'offer'
+            'offer',
+            'term_condition'
         )
 
 
@@ -51,7 +52,6 @@ class DoctorProfileSerializer(serializers.ModelSerializer):
             instance.save()
             if validated_data:
                 try:
-                    print(validated_data)
                     profile_obj = DoctorProfile.objects.get(doctor=instance.id)
                     profile_obj.doctor_pic = validated_data.get('doctor_pic',profile_obj.doctor_pic)
                     profile_obj.gender = validated_data.get('gender',profile_obj.gender)

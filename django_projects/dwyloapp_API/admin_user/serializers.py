@@ -7,9 +7,17 @@ class AdminSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = UserAccount
-        fields = ['email','name','mobile_no','role','password', 'offer']#"__all__"
-
+        fields = (
+            'email', 
+            'name', 
+            'password',
+            'mobile_no',
+            'role', 
+            'offer', 
+            'term_condition'
+        )
     def create(self, validated_data):
+        print(validated_data)
         user = UserAccount.objects.create_superuser(**validated_data)
         send_otp_email_verify(user.email, user)
         return user

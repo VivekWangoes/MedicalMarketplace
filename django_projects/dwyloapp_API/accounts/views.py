@@ -1,36 +1,36 @@
 from django.shortcuts import render
 from django.contrib.auth import login,logout, authenticate
-from rest_framework.views import APIView
-from rest_framework.permissions import IsAuthenticated,AllowAny,IsAdminUser
-from rest_framework.response import Response
-from rest_framework import status
-import time
-from .permissions import IsTokenValid,IsDoctor,IsPatient
-from rest_framework_jwt.settings import api_settings
-from .models import UserAccount,BlackListedToken, ContactSupport
-from .serializers import ContactSupportSerializer, UserSerializerForView
-from datetime import datetime
-from django.core.mail import EmailMultiAlternatives
-from cerberus import Validator
 from django.utils.encoding import force_bytes, force_text
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
-from django.contrib.auth.tokens import default_token_generator 
-from django.urls import reverse
-from django.contrib.auth.hashers import make_password
-from django.contrib import messages
-from django.template.loader import render_to_string
+from django.contrib.auth.tokens import default_token_generator
 from django.contrib.sites.shortcuts import get_current_site
-from utility.send_otp_email import send_otp_email_verify, send_otp_login
-from config.messages import Messages
-from datetime import datetime, timezone
+from django.contrib.auth.hashers import make_password
+from django.template.loader import render_to_string
+from django.core.mail import EmailMultiAlternatives
+from django.contrib import messages
 from django.db import transaction
+from django.urls import reverse
+from datetime import datetime, timezone
+
+from rest_framework.permissions import IsAuthenticated,AllowAny,IsAdminUser
+from rest_framework_jwt.settings import api_settings
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from rest_framework import status
+from cerberus import Validator
+
+from utility.send_otp_email import send_otp_email_verify, send_otp_login
 from project.settings.dev import EMAIL_HOST_USER
+from config.messages import Messages
+from .permissions import IsTokenValid,IsDoctor,IsPatient
+from .models import UserAccount,BlackListedToken, ContactSupport
+from .serializers import ContactSupportSerializer, UserSerializerForView
 # Create your views here.
 
 
 class VerifyEmail(APIView):
     """This class is used for verify email"""
-    permission_classes = [AllowAny, ]
+    permission_classes = [AllowAny,]
 
     def post(self, request):
         try:
@@ -42,8 +42,8 @@ class VerifyEmail(APIView):
             otp = request.data.get('otp')
             time_delta = (current_time - user_obj.email_otp_created)
             total_seconds = time_delta.total_seconds()
-            minutes = total_seconds/60
-            if minutes > 5:
+            minutes = total_seconds / 60
+            if minutes > 2:
                 user_obj.email_otp = None
                 user_obj.save()
                 return Response({'message': Messages.OTP_TIME_EXPIRED}, 
@@ -71,7 +71,7 @@ class VerifyEmail(APIView):
         try:
             with transaction.atomic():
                 email = request.data.get('email')
-                user_obj = UserAccount.objects.filter(email=email).first()
+                user_obj = UserAccount.objects.filter(email=email.lower()).first()
                 if not user_obj:
                     return Response({'message': Messages.USER_NOT_EXISTS},
                                      status=status.HTTP_404_NOT_FOUND)
@@ -84,7 +84,7 @@ class VerifyEmail(APIView):
 
 class LoginWithOTP(APIView):
     """This class is used for  login with otp"""
-    permission_classes = [AllowAny, ]
+    permission_classes = [AllowAny,]
 
     def post(self, request):
         try:
@@ -96,7 +96,7 @@ class LoginWithOTP(APIView):
                 current_time = datetime.now(timezone.utc)
                 time_delta = (current_time - user_obj.login_otp_created)
                 total_seconds = time_delta.total_seconds()
-                minutes = total_seconds/60
+                minutes = total_seconds / 60
                 with transaction.atomic():
                     if minutes > 5:
                         user_obj.login_otp = None
@@ -128,10 +128,13 @@ class LoginWithOTP(APIView):
         try:
             with transaction.atomic():
                 email = request.data.get('email')
-                user_obj = UserAccount.objects.get(email=email)
+                user_obj = UserAccount.objects.get(email=email.lower())
                 if not user_obj:
                     return Response({'message': Messages.USER_NOT_EXISTS},
                                      status=status.HTTP_404_NOT_FOUND)
+                if user_obj.is_email_verified == False:
+                    return Response({"message": Messages.FIRST_VERIFY_EMAIL},
+                                     status=status.HTTP_400_BAD_REQUEST)
                 send_otp_login(email, user_obj)
                 return Response({'message': Messages.OTP_SENT})
         except Exception as exception:
@@ -141,14 +144,13 @@ class LoginWithOTP(APIView):
 
 class SignIn(APIView):
     """This class is used for user signin"""
-    permission_classes = [AllowAny, ]
+    permission_classes = [AllowAny,]
 
     def post(self, request):
-            email = request.data.get('email')
+            email = request.data.get('email').lower()
             password = request.data.get('password')
             try:
                 user_obj = UserAccount.objects.get(email=email)
-                print(user_obj)
                 if user_obj.is_email_verified == True:
                     user = authenticate(email=email, password=password)
                     if user:
@@ -163,7 +165,6 @@ class SignIn(APIView):
                                          'id': user_obj.id, 'user': str(user_obj),
                                          'role': user_obj.role,'token': token},
                                          status=status.HTTP_200_OK)
-                        
                     else:
                         return Response({'message': Messages.INVALID_CREDENTIAL},
                                          status=status.HTTP_400_BAD_REQUEST)
@@ -177,7 +178,7 @@ class SignIn(APIView):
 
 class UsersView(APIView):
     """For get all users"""
-    permission_classes = [IsAdminUser]
+    permission_classes = [IsAdminUser,]
 
     def get(self,request):
         user_data = UserAccount.objects.all()
@@ -206,7 +207,7 @@ class ContactSupportQueryView(APIView):
     This class is used for get users query.
     Admin can access this class
     """
-    permission_classes = [IsAdminUser, ]
+    permission_classes = [IsAdminUser,]
 
     def get(self,request):
         try:
@@ -260,7 +261,7 @@ def change_password(request, uidb64=None, token=None):
 
 class ForgotPassword(APIView):
     """send forgot password link to user"""
-    permission_classes = [AllowAny, ]
+    permission_classes = [AllowAny,]
     
     def post(self, request):
         try:
@@ -273,7 +274,7 @@ class ForgotPassword(APIView):
                     {'error': v.errors},
                     status=status.HTTP_400_BAD_REQUEST
                 )
-            user = UserAccount.objects.filter(email=request.data.get('email'))
+            user = UserAccount.objects.filter(email=request.data.get('email').lower())
             if not user.exists():
                 return Response({"message": Messages.EMAIL_NOT_VALID},
                                  status=status.HTTP_400_BAD_REQUEST)
@@ -285,13 +286,11 @@ class ForgotPassword(APIView):
             activation_url = reverse("accounts:change_password", kwargs=kwargs)
             activate_url = "{0}://{1}{2}".format(request.scheme,
                                                  request.get_host(), activation_url)
-
             context = {
                 'user': user.first().name,
                 'activate_url': activate_url
             }
             html_content = render_to_string('account/forgot_password.html', context)
-
             email = EmailMultiAlternatives('Reset password', 'Reset your password',
                                             EMAIL_HOST_USER, [user.first().email, ])
             email.attach_alternative(html_content, 'text/html')

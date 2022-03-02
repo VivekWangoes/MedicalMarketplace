@@ -9,7 +9,7 @@ class PatientSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = UserAccount
-        fields = ['id', 'email', 'name', 'mobile_no', 'role', 'offer']
+        fields = ['id', 'email', 'name', 'mobile_no', 'role', 'offer', 'term_condition']
 
 
 class PatientProfileSerializer(serializers.ModelSerializer):
@@ -40,6 +40,7 @@ class PatientProfileSerializer(serializers.ModelSerializer):
         if validated_data:
             try:
                 profile_obj = PatientProfile.objects.get(patient=instance.id)
+                profile_obj.patient_pic = validated_data.get('patient_pic',profile_obj.patient_pic)
                 profile_obj.gender = validated_data.get('gender',profile_obj.gender)
                 profile_obj.dob = validated_data.get('dob', profile_obj.dob)
                 profile_obj.emergency_contact_name = validated_data.get('emergency_contact_name',

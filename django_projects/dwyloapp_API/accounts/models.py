@@ -1,27 +1,22 @@
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
-from django.dispatch import receiver
-from django.urls import reverse
-from django_rest_passwordreset.signals import reset_password_token_created
-from django.core.mail import send_mail
-from project.settings.dev import EMAIL_HOST_USER
-from datetime import datetime
 from core.models import Base
 
 
 class UserAccountManager(BaseUserManager):
-    def create_user(self, email, name, mobile_no, password, role):
+    def create_user(self, email, name, password, mobile_no, offer, role, term_condition):
         if not email:
             raise ValueError('user must have an email')
 
         email = self.normalize_email(email)
-        user = self.model(email=email, name=name, mobile_no=mobile_no, role=role)
+        user = self.model(email=email, name=name, mobile_no=mobile_no, role=role,
+                          offer=offer, term_condition=term_condition)
         user.set_password(password)
         user.save(using=self._db)
         return user
 
-    def create_superuser(self, email, name, mobile_no, password, role):
-        user = self.create_user(email, name, mobile_no, password, role)
+    def create_superuser(self, email, name, password, mobile_no=None, offer=False, role=0, term_condition=True):
+        user = self.create_user(email, name, password, mobile_no, offer, role, term_condition)
         user.is_superuser = True
         user.is_staff = True
         user.is_active = True
@@ -66,7 +61,7 @@ class UserAccount(Base, AbstractBaseUser, PermissionsMixin):
     email_otp_created = models.DateTimeField(null=True, blank=True)
     login_otp = models.CharField(max_length=5,null=True, blank=True)
     login_otp_created = models.DateTimeField(null=True, blank=True)
-    mobile_no = models.CharField(max_length=12)
+    mobile_no = models.CharField(max_length=12, null=True, blank=True)
     last_name = models.CharField(max_length=150, null=True, blank=True, default="")
     is_staff = models.BooleanField(default=False)
     is_superuser = models.BooleanField(default=False)
@@ -80,7 +75,7 @@ class UserAccount(Base, AbstractBaseUser, PermissionsMixin):
     objects = UserAccountManager()
 
     USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS = ['name','mobile_no','role']
+    REQUIRED_FIELDS = ['name',]
 
     def get_full_name(self):
         return self.name
