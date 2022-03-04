@@ -88,9 +88,9 @@ class Appointment(Base):
 	patient = models.ForeignKey(PatientProfile, related_name="patient_appointments", on_delete=models.CASCADE, blank=True, null=True)
 	slot = models.OneToOneField(DoctorSlot, related_name='doctor_slot', on_delete=models.CASCADE)
 	status = models.CharField(max_length=50, choices=STATUS_CHOICE, blank=True, null=True)
-
+	#term_condition = models.BooleanField(default=False, null=True, blank=True)
 	def __str__(self):
-		return "%s %s %s" % (self.doctor_id, self.patient_id, self.slot_id)
+		return "%s %s %s" % (self.doctor, self.patient, self.slot)
 
 
 class ConsultationDetail(Base):
@@ -98,5 +98,5 @@ class ConsultationDetail(Base):
 	notes = models.TextField()
 	medication = models.CharField(max_length=50, null=True, blank=True)
 	lab_test = models.CharField(max_length=50, null=True, blank=True)
-	next_appointment = models.DateTimeField(null=True, blank=True)
+	next_appointment = models.ForeignKey(Appointment, related_name='next_appointment', on_delete=models.CASCADE, null=True, blank=True)
 	health_status = models.CharField(max_length=50, blank=True, null=True)

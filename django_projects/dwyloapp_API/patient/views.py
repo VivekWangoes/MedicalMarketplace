@@ -6,7 +6,7 @@ import math
 import string
 import random
 
-from rest_framework.permissions import IsAuthenticated,AllowAny
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import status
@@ -250,7 +250,8 @@ class DoctorSearchBySpecialty(APIView):
             doctor_data = DoctorProfile.objects.filter(
                         specialty__icontains=request.data.get('specialty'))
             serialize_data = DoctorProfileSerializer(doctor_data, many=True).data
-            serialize_data1 = serialize_data
+            doctor_serialize_data = {}
+            doctor_serialize_data['showing_doctors'] = len(serialize_data)
             next_availability = {}
             for count, data in enumerate(serialize_data):
                 doctor_user = UserAccount.objects.get(email=data['doctor']['email'])
@@ -258,10 +259,11 @@ class DoctorSearchBySpecialty(APIView):
                                                   slot_time__gte=datetime.utcnow(),
                                                   is_booked=False).order_by('slot_time')
                 if slots:
-                    serialize_data1[count]['next_availability'] = slots[0].slot_time
+                    serialize_data[count]['next_availability'] = slots[0].slot_time
                 else:
-                    serialize_data1[count]['next_availability'] = "No slots available"
-            return Response(serialize_data, status=status.HTTP_200_OK)
+                    serialize_data[count]['next_availability'] = "No slots available"
+            doctor_serialize_data['doctors'] = serialize_data
+            return Response(doctor_serialize_data, status=status.HTTP_200_OK)
         except Exception as exception:
             return Response({"error": str(exception)},
                              status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -275,7 +277,8 @@ class DoctorSearchByClinic(APIView):
             doctor_data = DoctorProfile.objects.filter(
                         clinic__icontains=request.data.get('clinic'))
             serialize_data = DoctorProfileSerializer(doctor_data, many=True).data
-            serialize_data1 = serialize_data
+            doctor_serialize_data = {}
+            doctor_serialize_data['showing_doctors'] = len(serialize_data)
             next_availability = {}
             for count, data in enumerate(serialize_data):
                 doctor_user = UserAccount.objects.get(email=data['doctor']['email'])
@@ -283,10 +286,11 @@ class DoctorSearchByClinic(APIView):
                                                   slot_time__gte=datetime.utcnow(),
                                                   is_booked=False).order_by('slot_time')
                 if slots:
-                    serialize_data1[count]['next_availability'] = slots[0].slot_time
+                    serialize_data[count]['next_availability'] = slots[0].slot_time
                 else:
-                    serialize_data1[count]['next_availability'] = "No slots available"
-            return Response(serialize_data, status=status.HTTP_200_OK)
+                    serialize_data[count]['next_availability'] = "No slots available"
+            doctor_serialize_data['doctors'] = serialize_data
+            return Response(doctor_serialize_data, status=status.HTTP_200_OK)
         except Exception as exception:
             return Response({"error": str(exception)},
                              status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -301,7 +305,8 @@ class DoctorSearchByHealthConcern(APIView):
             doctor_data = DoctorProfile.objects.all().filter(
                         expertise_area__icontains=request.data.get('health_concern'))
             serialize_data = DoctorProfileSerializer(doctor_data, many=True).data
-            serialize_data1 = serialize_data
+            doctor_serialize_data = {}
+            doctor_serialize_data['showing_doctors'] = len(serialize_data)
             next_availability = {}
             for count, data in enumerate(serialize_data):
                 doctor_user = UserAccount.objects.get(email=data['doctor']['email'])
@@ -309,10 +314,11 @@ class DoctorSearchByHealthConcern(APIView):
                                                   slot_time__gte=datetime.utcnow(),
                                                   is_booked=False).order_by('slot_time')
                 if slots:
-                    serialize_data1[count]['next_availability'] = slots[0].slot_time
+                    serialize_data[count]['next_availability'] = slots[0].slot_time
                 else:
-                    serialize_data1[count]['next_availability'] = "No slots available"
-            return Response(serialize_data, status=status.HTTP_200_OK)
+                    serialize_data[count]['next_availability'] = "No slots available"
+            doctor_serialize_data['doctors'] = serialize_data
+            return Response(doctor_serialize_data, status=status.HTTP_200_OK)
         except Exception as exception:
             return Response({"error": str(exception)},
                              status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -326,7 +332,8 @@ class DoctorSearchByName(APIView):
         try:
             doctor_data = DoctorProfile.objects.filter(doctor__name__icontains=request.data.get('name'))
             serialize_data = DoctorProfileSerializer(doctor_data, many=True).data
-            serialize_data1 = serialize_data
+            doctor_serialize_data = {}
+            doctor_serialize_data['showing_doctors'] = len(serialize_data)
             next_availability = {}
             for count, data in enumerate(serialize_data):
                 doctor_user = UserAccount.objects.get(email=data['doctor']['email'])
@@ -334,10 +341,11 @@ class DoctorSearchByName(APIView):
                                                   slot_time__gte=datetime.utcnow(),
                                                   is_booked=False).order_by('slot_time')
                 if slots:
-                    serialize_data1[count]['next_availability'] = slots[0].slot_time
+                    serialize_data[count]['next_availability'] = slots[0].slot_time
                 else:
-                    serialize_data1[count]['next_availability'] = "No slots available"
-            return Response(serialize_data, status=status.HTTP_200_OK)
+                    serialize_data[count]['next_availability'] = "No slots available"
+            doctor_serialize_data['doctors'] = serialize_data
+            return Response(doctor_serialize_data, status=status.HTTP_200_OK)
 
         except Exception as exception:
             return Response({"error": str(exception)},
@@ -378,6 +386,11 @@ class DoctorAvailabilityProfile(APIView):
                 recent_review['review'] = review_obj[0].review
                 recent_review['name'] = review_obj[0].patient.patient.name
                 serialize_data1['recent_review'] = recent_review
+            else:
+                serialize_data1['friendliness_rating'] = 0
+                serialize_data1['explanation_rating'] = 0
+                serialize_data1['recommended_by'] = (doctor_profile_obj.rating) * 20
+                serialize_data1['recent_review'] = "No recent reivew"
             return Response(serialize_data, status=status.HTTP_200_OK)
 
         except Exception as exception:
@@ -579,7 +592,6 @@ class PatientConsultationDetail(APIView):
 
     def get(self, request, id):
         try:
-            print("$$$$",id)
             consultation_data = ConsultationDetail.objects.filter(appointment__id=id).first()
             if not consultation_data:
                 return Response({"message": Messages.CONSULTATION_NOT_EXIST},
@@ -743,6 +755,9 @@ class MyCartItemView(APIView):
                              status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def delete(self, request):
+        if request.data.get('medicine') and request.data.get('lab_test'):
+            return Response({"message": Messages.DELETE_ONE_ITEM},
+                             status=status.HTTP_400_BAD_REQUEST)
         if request.data.get('medicine'):
             mycart_item_obj = MyCartItem.objects.filter(medicine=request.data.get('medicine'),
                                                         mycart__patient_cart=request.user.patient_profile)
@@ -756,8 +771,7 @@ class MyCartItemView(APIView):
                 return Response({"message": Messages.CARTITEM_NOT_EXIST},
                                  status=status.HTTP_404_NOT_FOUND)
         if int(mycart_item_obj.first().quantity) == 1:
-            mycart_obj = MyCartItem.objects.filter(mycart__patient_cart=request.user.patient_profile).first()
-            mycart_obj.delete()
+            mycart_item_obj.delete()
             return Response({"message": Messages.CART_ITEM_DELETED},
                              status=status.HTTP_404_NOT_FOUND)
         mycart_item_obj = mycart_item_obj.first()
@@ -780,34 +794,40 @@ class OrderSummary(APIView):
             if not medicine_cartitem_obj.exists() and not labtest_cartitem_obj.exists():
                 return Response({"message": Messages.CARTITEM_NOT_EXIST},
                                  status=status.HTTP_404_NOT_FOUND)
-            medicine_serialize_data = GetMyCartItemSerializer(medicine_cartitem_obj, many=True)
-            medicine_serialize_data = medicine_serialize_data.data
-            total_medical_price = MyCartItem.objects.filter(mycart__patient_cart=request.user.patient_profile, item_choice="MEDICINE").annotate(
-                                medical_price=Sum('medicine__price') * Sum('quantity')).aggregate(
-                                total_medical_price=Sum('medical_price'))
-            medicine_serialize_data.append(total_medical_price)
-            labtest_serialize_data = GetMyCartItemSerializer(labtest_cartitem_obj, many=True)
-            labtest_serialize_data = labtest_serialize_data.data
-            total_labtest_price = MyCartItem.objects.filter(mycart__patient_cart=request.user.patient_profile, item_choice="LAB_TEST").annotate(
-                                labtest_price=Sum('lab_test__price') * Sum('quantity')).aggregate(
-                                total_labtest_price=Sum('labtest_price'))
-            labtest_serialize_data.append(total_labtest_price)
-            medicine_serialize_data.append(labtest_serialize_data)
+            order_summary = {}
+            total_medical_price = 0
+            total_labtest_price = 0
+            if medicine_cartitem_obj:
+                medicine_serialize_data = GetMyCartItemSerializer(medicine_cartitem_obj, many=True)
+                total_medical_price = MyCartItem.objects.filter(mycart__patient_cart=request.user.patient_profile, item_choice="MEDICINE").annotate(
+                                    medical_price=Sum('medicine__price') * Sum('quantity')).aggregate(
+                                    total_medical_price=Sum('medical_price'))
+                total_medical_price = 0 if total_medical_price['total_medical_price'] is None else total_medical_price['total_medical_price']
+                medicine_serialize_data.data.append(total_medical_price)
+                order_summary['medicine_data'] = medicine_serialize_data.data
+            if labtest_cartitem_obj:
+                labtest_serialize_data = GetMyCartItemSerializer(labtest_cartitem_obj, many=True)
+                total_labtest_price = MyCartItem.objects.filter(mycart__patient_cart=request.user.patient_profile, item_choice="LAB_TEST").annotate(
+                                    labtest_price=Sum('lab_test__price') * Sum('quantity')).aggregate(
+                                    total_labtest_price=Sum('labtest_price'))
+                total_labtest_price = 0 if total_labtest_price['total_labtest_price'] is None else total_labtest_price['total_labtest_price']
+                labtest_serialize_data.data.append(total_labtest_price)
+                order_summary['labtest_data'] = labtest_serialize_data.data
             is_prescription = MyCartItem.objects.filter(mycart__patient_cart=request.user.patient_profile,
-                                                        item_choice="MEDICINE").filter(medicine__is_prescription=True)#.aggregate(is_prescription=Count('medicine__is_prescription'))
-            prescription = is_prescription.filter(prescription='')#filter(prescription__in=['', None])
+                                                        item_choice="MEDICINE").filter(medicine__is_prescription=True)
+            prescription = is_prescription.filter(prescription='')
             prescription_added = False
             if len(prescription) == 0:
-                prescription_added = True
+                prescription_added = "Not required" if len(is_prescription)==0 else True
             extra_data = {}
             extra_data['prescription_added'] = prescription_added
-            extra_data['total_payable'] = total_medical_price['total_medical_price'] + total_labtest_price['total_labtest_price']
+            extra_data['total_payable'] = total_medical_price + total_labtest_price
             date = datetime.now() + timedelta(days=1)
             extra_data['expected_date'] = date.strftime("%d %b %Y")
             address_data = Address.objects.filter(patient=request.user.patient_profile).first()
             extra_data['address'] = AddressSerializer(address_data).data
-            medicine_serialize_data.append(extra_data)
-            return Response(medicine_serialize_data, status=status.HTTP_200_OK)
+            order_summary.update(extra_data)
+            return Response(order_summary, status=status.HTTP_200_OK)
         except Exception as exception:
             return Response({"error": str(exception)},
                              status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -857,7 +877,7 @@ class ApplyCoupon(APIView):
         if off == "DISCOUNT_OFF":
             discount_price = (mycoupon.coupon.flat_off/100) * total_amount
             if discount_price > mycoupon.coupon.upto_off:
-                discount_price = mycoupon.coupon.upto_off
+                discount_price = mycoupon.coupon.upto_offp
             total_amount_payable = total_amount - discount_price
         if off == "RUPEES_OFF":
             discount_price = mycoupon.coupon.flat_off

@@ -2,12 +2,11 @@ from django.shortcuts import render
 from django.db import transaction
 from datetime import datetime
 
-from rest_framework.permissions import IsAuthenticated,AllowAny
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import status
 from cerberus import Validator
-
 
 from utility.send_otp_email import send_otp_email_verify
 from config.messages import Messages
@@ -151,6 +150,42 @@ class DoctorAvailabilitySet(APIView):
                              status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+class UpcomingAppointments(APIView):
+    """for getting upcoming appointments"""
+    permission_classes = [IsDoctor, IsTokenValid]
+
+    def get(self, request):
+        try:
+            appointment_data = Appointment.objects.filter(doctor=request.user.doctor_profile,
+                                                          status="UPCOMING")
+            serialize_data = AppointmentsSerializer(appointment_data, many=True).data
+            if not serialize_data:
+                return Response({"message": Messages.NO_UPCOMING_APPOINTMENT},
+                                 status=status.HTTP_404_NOT_FOUND)
+            return Response(serialize_data, status=status.HTTP_200_OK)
+        except Exception as exception:
+            return Response({"error": str(exception)},
+                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class CompletedAppointments(APIView):
+    """for getting upcoming appointments"""
+    permission_classes = [IsDoctor, IsTokenValid]
+
+    def get(self, request):
+        try:
+            appointment_data = Appointment.objects.filter(doctor=request.user.doctor_profile,
+                                                          status="COMPLETED")
+            serialize_data = AppointmentsSerializer(appointment_data, many=True).data
+            if not serialize_data:
+                return Response({"message": Messages.NO_COMPLETED_APPOINTMENT},
+                                 status=status.HTTP_404_NOT_FOUND)
+            return Response(serialize_data, status=status.HTTP_200_OK)
+        except Exception as exception:
+            return Response({"error": str(exception)},
+                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 class DoctorAllReview(APIView):
     """get all review by doctor"""
     permission_classes = [IsDoctor, IsTokenValid]
@@ -172,9 +207,9 @@ class ConsultationDetailView(APIView):
     """Give consultation detail given by doctor"""
     permission_classes = [IsDoctor, IsTokenValid]
 
-    def get(self, request, id):
+    def get(self, request):
         try:
-            consultation_data = ConsultationDetail.objects.filter(appointment__id=id).first()
+            consultation_data = ConsultationDetail.objects.filter(appointment__id=request.data.get('appointment_id')).first()
             if not consultation_data:
                 return Response({"message":Messages.CONSULTAION_NOT_GIVEN},
                                  status=status.HTTP_404_NOT_FOUND)
@@ -184,14 +219,51 @@ class ConsultationDetailView(APIView):
             return Response({"error": str(exception)},
                              status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    def post(self, request, id):
+    def post(self, request):
         try:
-            consultation_data = ConsultationDetail.objects.filter(appointment__id=id).first()
-            if consultation_data:
-                return Response({"message": Messages.CONSULT_ALREADY_EXIST},
-                                 status=status.HTTP_208_ALREADY_REPORTED)
             request.data._mutable = True
-            request.data['appointment'] = id
+            schema = {
+                "appointment_id": {"type": "string", "required":True, "empty": False},
+                "notes": {"type": "string", "required": False, "empty": True},
+                "medication": {"type": "string", "required": False, "empty": True},
+                "lab_test": {"type": "string", "required": False, "empty": True},
+                "next_appointment": {"type": "string", "required": False, "empty": True}, 
+                "health_status": {"type": "string", "required": False, "empty": True},
+                "patient_profile_id": {"type": "string", "required": True, "empty": False}
+            }
+            v = Validator()
+            if not v.validate(request.data, schema):
+                return Response({"error": v.errors},status=status.HTTP_400_BAD_REQUEST)
+            consultation_data = ConsultationDetail.objects.filter(appointment__id=request.data.get('appointment_id'),
+                                                                  appointment__status="COMPLETED").first()
+                                                                                            
+            if consultation_data:
+                return Response({"message": Messages.CONSULTATION_ALREADY_EXIST},
+                                 status=status.HTTP_208_ALREADY_REPORTED)
+            if request.data.get('next_appointment'):
+                patient_profile_obj = PatientProfile.objects.filter(id=request.data.get('patient_profile_id')).first()
+                if not patient_profile_obj:
+                    return Response({"message": Messages.PATIENT_NOT_EXIST})
+                slot_time_obj = DoctorAvailability.objects.filter(doctor=request.user.doctor_profile,
+                                                                  time_slot__slot_time=request.data.get('next_appointment'),
+                                                                  time_slot__is_booked=True)
+                if slot_time_obj:
+                    return Response({"message": Messages.SLOT_ALREADY_BOOKED},
+                                     status=status.HTTP_208_ALREADY_REPORTED)
+                slot_obj = DoctorSlot.objects.filter(doctoravailability__doctor=request.user.doctor_profile,
+                                                     doctoravailability__time_slot__slot_time=request.data.get('next_appointment'),
+                                                     doctoravailability__time_slot__is_booked=False).first()
+                if not slot_obj:
+                    return Response({"message": Messages.SLOT_NOT_AVAILABLE},
+                                     status=status.HTTP_404_NOT_FOUND)
+                with transaction.atomic():
+                    appointment_obj = Appointment.objects.create(doctor=request.user.doctor_profile, patient=patient_profile_obj, 
+                                               slot=slot_obj, status="UPCOMING")
+                    appointment_obj.save()
+                    slot_obj.is_booked = True
+                    slot_obj.save()
+                    request.data['next_appointment'] = appointment_obj.id
+            request.data['appointment'] = request.data.get('appointment_id')
             request.data._mutable = False
             serialize_data = ConsultationSerializer(data=request.data)
             if serialize_data.is_valid(raise_exception=True):
@@ -202,9 +274,65 @@ class ConsultationDetailView(APIView):
             return Response({"error": str(exception)},
                              status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    def put(self, request, id):
+    def put(self, request):
         try:
-            consultation_data = ConsultationDetail.objects.get(appointment__id=id)
+            schema = {
+                "appointment_id": {"type": "string", "required":True, "empty": False},
+                "notes": {"type": "string", "required": False, "empty": True},
+                "medication": {"type": "string", "required": False, "empty": True},
+                "lab_test": {"type": "string", "required": False, "empty": True},
+                "next_appointment": {"type": "string", "required": False, "empty": True}, 
+                "health_status": {"type": "string", "required": False, "empty": True},
+                "patient_profile_id": {"type": "string", "required": True, "empty": False}
+            }
+            v = Validator()
+            if not v.validate(request.data, schema):
+                return Response({"error": v.errors},status=status.HTTP_400_BAD_REQUEST)
+            consultation_data = ConsultationDetail.objects.filter(appointment__id=request.data.get('appointment_id')).first()
+            if not consultation_data:
+                return Response({"message":Messages.CONSULTAION_NOT_GIVEN},
+                                 status=status.HTTP_404_NOT_FOUND)
+            previous_appointment = consultation_data.next_appointment
+            request.data._mutable = True
+            if previous_appointment:
+                if previous_appointment.slot.slot_time and request.data.get('next_appointment'):
+                    previous_appointment_time = datetime.strftime(previous_appointment.slot.slot_time,"%Y-%m-%d %H:%M:%S")
+                    previous_appointment_time = datetime.strptime(previous_appointment_time,"%Y-%m-%d %H:%M:%S")
+                    if previous_appointment_time == datetime.strptime(request.data.get('next_appointment'),"%Y-%m-%d %H:%M:%S"):
+                        return Response({"message":Messages.SAME_SLOT_TIME}, status=status.HTTP_208_ALREADY_REPORTED)
+            if request.data.get('next_appointment'):
+                patient_profile_obj = PatientProfile.objects.filter(id=request.data.get('patient_profile_id')).first()
+                if not patient_profile_obj:
+                    return Response({"message": Messages.PATIENT_NOT_EXIST})
+                slot_time_obj = DoctorAvailability.objects.filter(doctor=request.user.doctor_profile,
+                                                                  time_slot__slot_time=request.data.get('next_appointment'),
+                                                                  time_slot__is_booked=True)
+                if slot_time_obj:
+                    return Response({"message": Messages.SLOT_ALREADY_BOOKED},
+                                     status=status.HTTP_208_ALREADY_REPORTED)
+                slot_available_obj = DoctorSlot.objects.filter(doctoravailability__doctor=request.user.doctor_profile,
+                                                               doctoravailability__time_slot__slot_time=request.data.get('next_appointment'),
+                                                               doctoravailability__time_slot__is_booked=False).first()
+                if not slot_available_obj:
+                    return Response({"message": Messages.SLOT_NOT_AVAILABLE},
+                                     status=status.HTTP_404_NOT_FOUND)
+                with transaction.atomic():
+                    if not previous_appointment:
+                        new_appointment_obj = Appointment.objects.create(doctor=request.user.doctor_profile, patient=patient_profile_obj, 
+                                                   slot=slot_available_obj, status="UPCOMING")
+                        new_appointment_obj.save()
+                        slot_available_obj.is_booked = True
+                        slot_available_obj.save()
+                        request.data['next_appointment'] = new_appointment_obj.id
+                    if previous_appointment:
+                        previous_appointment.slot.is_booked = False
+                        previous_appointment.slot.save()
+                        previous_appointment.slot = slot_available_obj
+                        previous_appointment.save()
+                        slot_available_obj.is_booked = True
+                        slot_available_obj.save()
+                        request.data['next_appointment'] = previous_appointment.id 
+            request.data._mutable = False
             serialize_data = ConsultationSerializer(instance=consultation_data,
                                                     data=request.data, partial=True)
             if serialize_data.is_valid(raise_exception=True):

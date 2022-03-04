@@ -15,26 +15,20 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path,include
-#from rest_framework_simplejwt import views as jwt_views
-from rest_framework_jwt.views import obtain_jwt_token, refresh_jwt_token, verify_jwt_token
 from django.conf import settings
 from django.conf.urls.static import static
+from rest_framework_jwt.views import obtain_jwt_token, refresh_jwt_token, verify_jwt_token
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api-auth/', include('rest_framework.urls')),
-    # path(r'^api-token-auth/', obtain_jwt_token),
-    # path(r'^api-token-refresh/', refresh_jwt_token),
-    # path(r'^api-token-verify/', verify_jwt_token),
-    #path('api/password_reset/', include('django_rest_passwordreset.urls', namespace='password_reset')),
-
     #Account app url
     path('accounts/', include('accounts.urls')),
-    #Admin app url
+    #Admin-user app url
     path('admin-user/', include('admin_user.urls')),
-    #Doctor app url
+    #Doctor-user app url
     path('doctor/', include('doctor.urls')),
-    #Patient app url
+    #Patient-user app url
     path('patient/', include('patient.urls'))
 
 ]+ static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

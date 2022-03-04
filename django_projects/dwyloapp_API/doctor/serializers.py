@@ -2,6 +2,7 @@ from rest_framework import serializers
 from accounts.models import UserAccount
 from utility.send_otp_email import send_otp_email_verify
 from django.db import transaction
+from patient.serializers import PatientProfileSerializer
 from .models import *
 
 
@@ -113,7 +114,6 @@ class ConfirmAppointmentsSerializer(serializers.ModelSerializer):
         fields = '__all__'    
 
 
-from patient.serializers import PatientProfileSerializer
 class AppointmentsSerializer(serializers.ModelSerializer):
     doctor = DoctorProfileSerializer()
     patient = PatientProfileSerializer()
@@ -140,7 +140,7 @@ class ConsultationSerializer(serializers.ModelSerializer):
         instance.notes = validated_data.get('notes', instance.notes)
         instance.medication = validated_data.get('medication', instance.medication)
         instance.lab_test = validated_data.get('lab_test', instance.lab_test)
-        instance.next_appointment = validated_data.get('next_appointment', instance.next_appointment)
+        instance.next_appointment = validated_data.get('next_appointment')
         instance.health_status = validated_data.get('health_status', instance.health_status)
         instance.save()
         return instance
@@ -148,7 +148,7 @@ class ConsultationSerializer(serializers.ModelSerializer):
 
 class ConsultationDetailSerializer(serializers.ModelSerializer):
     appointment = AppointmentsSerializer()
-
+    next_appointment = AppointmentsSerializer()
     class Meta:
         model = ConsultationDetail
         fields = (
