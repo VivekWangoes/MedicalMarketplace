@@ -34,7 +34,10 @@ class DoctorProfileSerializer(serializers.ModelSerializer):
             'career_started',
             'specialty',
             'rating',
-            'location_city',
+            'country',
+            'state',
+            'city',
+            'locality',
             'clinic',
             'consultation_fees',
             'expertise_area',
@@ -59,11 +62,15 @@ class DoctorProfileSerializer(serializers.ModelSerializer):
                     profile_obj.career_started = validated_data.get('career_started',
                                                                   profile_obj.career_started)
                     profile_obj.specialty = validated_data.get('specialty',profile_obj.specialty)
-                    profile_obj.location_city = validated_data.get('location_city',
-                                                                 profile_obj.location_city)
+                    profile_obj.country = validated_data.get('country', profile_obj.country)
+                    profile_obj.state = validated_data.get('state', profile_obj.state)
+                    profile_obj.city = validated_data.get('city', profile_obj.city)
+                    profile_obj.locality = validated_data.get('locality', profile_obj.locality)
                     profile_obj.clinic = validated_data.get('clinic',profile_obj.clinic)
                     profile_obj.consultation_fees = validated_data.get('consultation_fees',
                                                                      profile_obj.consultation_fees)
+                    profile_obj.booking_fees = validated_data.get('booking_fees',
+                                                                     profile_obj.booking_fees)
                     saved_expertise_area = profile_obj.expertise_area
                     if saved_expertise_area is not None:
                         saved_expertise_area = saved_expertise_area.split(',')

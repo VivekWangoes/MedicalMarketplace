@@ -1,9 +1,11 @@
 class Messages:
 	LINK_SENT = "Forgot password link sent to your registered email"
-	EMAIL_NOT_VALID = "Your email not valid"
+	EMAIL_NOT_VALID = "Your email is invalid"
 	OTP_TIME_EXPIRED = "Your time is expired please again generate otp"
 	OTP_WRONG = "Your otp is wrong please check"
+	ENTER_OTP = "Please enter otp"
 	EMAIL_ALREADY_VERIFIED = "Your email is already verified"
+	EMAIL_ALREADY_EXISTS = "User account with this email already exists"
 	EMAIL_VERIFIED = "Your email is verified"
 	USER_NOT_EXISTS = "User does not exists"
 	OTP_SENT = "New otp is sent to your registered email"

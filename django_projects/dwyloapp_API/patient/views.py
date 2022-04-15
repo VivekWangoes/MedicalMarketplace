@@ -1,7 +1,9 @@
 from django.shortcuts import render
 from django.db import transaction
 from django.db.models import Sum, Count
+from django.core.exceptions import ValidationError
 from datetime import datetime, timedelta, timezone
+import time
 import math
 import string
 import random
@@ -56,6 +58,7 @@ class PatientRegister(APIView):
                                                            term_condition=True)
                 user_obj.save()
                 patient_profile_obj = PatientProfile.objects.create(patient=user_obj,
+                                                                    patient_pic=patient_profile.get('patient_pic'),
                                                                     gender=patient_profile.get('gender'),
                                                                     dob=patient_profile.get('dob'),
                                                                     emergency_contact_name=patient_profile.get('emergency_contact_name'),
@@ -70,14 +73,17 @@ class PatientRegister(APIView):
                 send_otp_email_verify(user_obj.email, user_obj)
             return Response({'message': Messages.ACCOUNT_CREATED},
                              status = status.HTTP_200_OK)
+        except ValidationError as exception:
+            return Response({'message': Messages.EMAIL_ALREADY_EXISTS},
+                             status=status.HTTP_400_BAD_REQUEST)
         except Exception as exception:
                 return Response({'error': str(exception)},
-                                 status = status.HTTP_500_INTERNAL_SERVER_ERROR)
+                                 status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class PatientProfileView(APIView):
     """patient personal profile update"""
-    permission_classes = [IsPatient, IsAuthenticated]
+    permission_classes = [IsPatient, IsTokenValid]
 
     def get(self, request):
         try:
@@ -89,6 +95,8 @@ class PatientProfileView(APIView):
 
     def put(self, request):
         try:
+            #import pdb;pdb.set_trace()
+            print(request.FILES, request.data)
             serialize_data = PatientProfileSerializer(instance=request.user,
                                                       data=request.data,
                                                       partial=True)
@@ -97,8 +105,9 @@ class PatientProfileView(APIView):
             return Response({'message':Messages.PROFILE_UPDATED},
                              status=status.HTTP_200_OK)
         except Exception as exception:
-                return Response({'error': str(exception)},
-                                 status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            print(exception)
+            return Response({'error': str(exception)},
+                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class AllergyView(APIView):
@@ -153,7 +162,7 @@ class SurgeryView(APIView):
 
 class PatientMedicalProfileView(APIView):
     """patient medical profile update"""
-    permission_classes = [IsPatient, IsAuthenticated]
+    permission_classes = [IsPatient, IsTokenValid]
 
     def get(self, request):
         serialize_data = PatientMedicalProfileSerializer(request.user.patient_profile.patient_medical_profile)
@@ -161,6 +170,8 @@ class PatientMedicalProfileView(APIView):
 
     def put(self, request):
         try:
+            print(request.data)
+            #import pdb;pdb.set_trace()
             serialize_data = PatientMedicalProfileSerializer(
                              instance=request.user.patient_profile.patient_medical_profile,
                              data=request.data, partial=True)
@@ -168,13 +179,19 @@ class PatientMedicalProfileView(APIView):
                 patient_obj = serialize_data.save()
             if request.data.get('alergies_data', ''):
                 ids = request.data.get('alergies_data').get('id',[])
+                new_alergies = request.data.get('alergies_data').get('new',[])
                 alergy_obj = Allergy.objects.filter(
-                           name=request.data.get('alergies_data').get('new') if request.data.get('alergies_data').get('new') else [None, ]).first()
-                ids.append(alergy_obj.id) if alergy_obj else None
+                           name__in=new_alergies if new_alergies else [None, ]).first()
+
+                if alergy_obj:
+                    for alergy in alergy_obj:
+                        ids.append(alergy.id)
                 alergies_obj = Allergy.objects.filter(id__in=ids)
                 patient_obj.allergies.set(alergies_obj)
-                if not alergy_obj:
-                    patient_obj.allergies.create(name=request.data.get('alergies_data')['new'])
+
+                if not alergy_obj and new_alergies:
+                    for alergy in new_alergies:
+                        patient_obj.allergies.create(name=alergy)
             else:
                 alergies_obj = Allergy.objects.filter(id__in=[None, ])
                 patient_obj.allergies.set(alergies_obj)
@@ -195,7 +212,7 @@ class PatientMedicalProfileView(APIView):
 
 class PatientLifeStyleView(APIView):
     """patient life style profile update"""
-    permission_classes = [IsPatient, IsAuthenticated]
+    permission_classes = [IsPatient, IsTokenValid]
 
     def get(self, request):
         try:
@@ -220,10 +237,11 @@ class PatientLifeStyleView(APIView):
 
 class PatientCompleteProfile(APIView):
     """patient complete profile update"""
-    permission_classes = [IsPatient, IsAuthenticated]
+    permission_classes = [IsPatient, IsTokenValid]
 
     def get(self, request):
         try:
+            print("#####",request.user)
             serialize_data = PatientCompleteProfileSerializer(request.user.patient_profile).data
             patient_profile = [key for key in serialize_data if serialize_data[key] is not None]
             patient = dict(serialize_data['patient'])
@@ -233,7 +251,7 @@ class PatientCompleteProfile(APIView):
             life_style = dict(serialize_data['patient_life_style'])
             life_style = [key for key in life_style if life_style[key] is not None]
             complete_fields = (len(patient_profile)-3) + (len(patient)-3) + (len(medical_profile)-4) + (len(life_style)-4) 
-            percentage = math.ceil((complete_fields / 24) * 100)
+            percentage = math.ceil((complete_fields / 25) * 100)
             serialize_data['complete_profile'] = str(percentage) + "%"
             return Response(serialize_data, status=status.HTTP_200_OK)
         except Exception as exception:
@@ -241,70 +259,51 @@ class PatientCompleteProfile(APIView):
                                  status = status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-class DoctorSearchBySpecialty(APIView):
-    """This class is used for return Doctor based on speciality"""
+from django.db.models import Q
+class DoctorSearchView(APIView):
+    """This class is used for return Doctor based on speciality,name , clinic"""
     permission_classes = [IsPatient, IsTokenValid]
 
-    def get(self, request):
+    def post(self, request):
         try:
-            doctor_data = DoctorProfile.objects.filter(
-                        specialty__icontains=request.data.get('specialty'))
-            serialize_data = DoctorProfileSerializer(doctor_data, many=True).data
-            doctor_serialize_data = {}
-            doctor_serialize_data['showing_doctors'] = len(serialize_data)
-            next_availability = {}
-            for count, data in enumerate(serialize_data):
-                doctor_user = UserAccount.objects.get(email=data['doctor']['email'])
-                slots = DoctorSlot.objects.filter(doctoravailability__doctor=doctor_user.doctor_profile,
-                                                  slot_time__gte=datetime.utcnow(),
-                                                  is_booked=False).order_by('slot_time')
-                if slots:
-                    serialize_data[count]['next_availability'] = slots[0].slot_time
-                else:
-                    serialize_data[count]['next_availability'] = "No slots available"
-            doctor_serialize_data['doctors'] = serialize_data
-            return Response(doctor_serialize_data, status=status.HTTP_200_OK)
-        except Exception as exception:
-            return Response({"error": str(exception)},
-                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-class DoctorSearchByClinic(APIView):
-    """This class is used for return Doctor based on clinic"""
-    permission_classes = [IsPatient,IsTokenValid]
-
-    def get(self, request):
-        try:
-            doctor_data = DoctorProfile.objects.filter(
-                        clinic__icontains=request.data.get('clinic'))
-            serialize_data = DoctorProfileSerializer(doctor_data, many=True).data
-            doctor_serialize_data = {}
-            doctor_serialize_data['showing_doctors'] = len(serialize_data)
-            next_availability = {}
-            for count, data in enumerate(serialize_data):
-                doctor_user = UserAccount.objects.get(email=data['doctor']['email'])
-                slots = DoctorSlot.objects.filter(doctoravailability__doctor=doctor_user.doctor_profile,
-                                                  slot_time__gte=datetime.utcnow(),
-                                                  is_booked=False).order_by('slot_time')
-                if slots:
-                    serialize_data[count]['next_availability'] = slots[0].slot_time
-                else:
-                    serialize_data[count]['next_availability'] = "No slots available"
-            doctor_serialize_data['doctors'] = serialize_data
-            return Response(doctor_serialize_data, status=status.HTTP_200_OK)
-        except Exception as exception:
-            return Response({"error": str(exception)},
-                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            # import pdb;pdb.set_trace()
+            # doctor_data = DoctorProfile.objects.filter(
+            #             specialty__icontains=request.data.get('key')) | DoctorProfile.objects.filter(
+            #             clinic__icontains=request.data.get('key')) | DoctorProfile.objects.filter(
+            #             doctor__name__icontains=request.data.get('key')) | DoctorProfile.objects.all().filter(
+            #             expertise_area__icontains=request.data.get('key'))
+            # doctor_data = DoctorProfile.objects.filter(
+            #             Q(specialty__icontains=request.data.get('key')), (Q(country__icontains=request.data.get('location')) & 
+            #             Q(city__icontains=request.data.get('city'))) |
+            #             Q(state__icontains=request.data.get('location')) & Q(city__icontains=request.data.get('city')) | Q(city__icontains=request.data.get('location')) |
+            #             Q(locality__icontains=request.data.get('location')) & Q(city__icontains=request.data.get('city'))
+            #             ) \
+            #             | DoctorProfile.objects.filter(Q(clinic__icontains=request.data.get('key')), Q(country__icontains=request.data.get('location')) &
+            #             Q(city__icontains=request.data.get('city')) |
+            #             Q(state__icontains=request.data.get('location')) & Q(city__icontains=request.data.get('city')) | 
+            #             Q(city__icontains=request.data.get('location')) |
+            #             Q(locality__icontains=request.data.get('location'))  & Q(city__icontains=request.data.get('city'))
+            #             ) \
+            #             | DoctorProfile.objects.filter(Q(doctor__name__icontains=request.data.get('key')), Q(country__icontains=request.data.get('location')) &
+            #             Q(city__icontains=request.data.get('city')) |
+            #             Q(state__icontains=request.data.get('location')) & Q(city__icontains=request.data.get('city')) | Q(city__icontains=request.data.get('location')) |
+            #             Q(locality__icontains=request.data.get('location')) & Q(city__icontains=request.data.get('city'))
+            #             )\
+            #             | DoctorProfile.objects.all().filter(Q(expertise_area__icontains=request.data.get('key')), Q(country__icontains=request.data.get('location')) &
+            #             Q(city__icontains=request.data.get('city')) |
+            #             Q(state__icontains=request.data.get('location')) & Q(city__icontains=request.data.get('city')) |
+            #             Q(city__icontains=request.data.get('location')) |
+            #             Q(locality__icontains=request.data.get('location')) & Q(city__icontains=request.data.get('city'))
+            #             )
+            print(request.data)
+            doctor_data = DoctorProfile.objects.filter((Q(specialty__icontains=request.data.get('key')) | Q(clinic__icontains=request.data.get('key')) |
+                        Q(doctor__name__icontains=request.data.get('key')) | Q(expertise_area__icontains=request.data.get('key'))),
+                        (Q(country__icontains=request.data.get('location')) | Q(state__icontains=request.data.get('location')) |
+                        Q(city__icontains=request.data.get('location')) | Q(locality__icontains=request.data.get('location'))) &
+                        Q(city__icontains=request.data.get('city')))
 
 
-class DoctorSearchByHealthConcern(APIView):
-    """This class is used for return Doctor based on HealthConcern"""
-    permission_classes = [IsPatient, IsTokenValid]
-
-    def get(self, request):
-        try:
-            doctor_data = DoctorProfile.objects.all().filter(
-                        expertise_area__icontains=request.data.get('health_concern'))
-            serialize_data = DoctorProfileSerializer(doctor_data, many=True).data
+            serialize_data = DoctorProfileSerializer(doctor_data.distinct(), many=True).data
             doctor_serialize_data = {}
             doctor_serialize_data['showing_doctors'] = len(serialize_data)
             next_availability = {}
@@ -324,32 +323,50 @@ class DoctorSearchByHealthConcern(APIView):
                              status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-class DoctorSearchByName(APIView):
-    """This class is used for return Doctor based on Doctors"""
-    permission_classes = [IsPatient,IsTokenValid]
+# class DoctorAvailabilityProfile(APIView):
+    """for getting particular doctor availabilities"""
+    # permission_classes = [IsPatient, IsTokenValid]
 
-    def get(self, request):
-        try:
-            doctor_data = DoctorProfile.objects.filter(doctor__name__icontains=request.data.get('name'))
-            serialize_data = DoctorProfileSerializer(doctor_data, many=True).data
-            doctor_serialize_data = {}
-            doctor_serialize_data['showing_doctors'] = len(serialize_data)
-            next_availability = {}
-            for count, data in enumerate(serialize_data):
-                doctor_user = UserAccount.objects.get(email=data['doctor']['email'])
-                slots = DoctorSlot.objects.filter(doctoravailability__doctor=doctor_user.doctor_profile,
-                                                  slot_time__gte=datetime.utcnow(),
-                                                  is_booked=False).order_by('slot_time')
-                if slots:
-                    serialize_data[count]['next_availability'] = slots[0].slot_time
-                else:
-                    serialize_data[count]['next_availability'] = "No slots available"
-            doctor_serialize_data['doctors'] = serialize_data
-            return Response(doctor_serialize_data, status=status.HTTP_200_OK)
+    # def post(self, request):
+    #     try:
+    #         doctor_profile_obj = DoctorProfile.objects.filter(doctor__id=request.data.get('doctor_id')).first()
+    #         if not doctor_profile_obj:
+    #             return Response({"message": Messages.USER_NOT_EXISTS},
+    #                              status=status.HTTP_404_NOT_FOUND)
+    #         serialize_data = DoctorProfileSerializer(doctor_profile_obj).data
+    #         serialize_data1 = serialize_data
+    #         today_slots = DoctorAvailability.objects.filter(doctor=doctor_profile_obj,
+    #                                                         time_slot__slot_time__date=datetime.utcnow().date(),
+    #                                                         time_slot__slot_time__gte=datetime.utcnow(),
+    #                                                         time_slot__is_booked=False).order_by('time_slot__slot_time')
+    #         serialize_data1['today_availability'] = DoctorAvailabilitySerializer(today_slots, many=True).data
+    #         total_review = DoctorReview.objects.filter(doctor=doctor_profile_obj).count()
+    #         if total_review:
+    #             total_friendliness_rating = DoctorReview.objects.filter(friendliness_rating__gte="3",
+    #                                                                     doctor=doctor_profile_obj).count()
+    #             friendliness_rating  = (total_friendliness_rating/total_review) * 100
+    #             serialize_data1['friendliness_rating'] = friendliness_rating
+    #             total_review = DoctorReview.objects.filter(doctor=doctor_profile_obj).count()
+    #             total_explanation_rating = DoctorReview.objects.filter(explanation_rating__gte="3",
+    #                                                                    doctor=doctor_profile_obj).count()
+    #             explanation_rating  = (total_explanation_rating/total_review) * 100
+    #             serialize_data1['explanation_rating'] = explanation_rating
+    #             serialize_data1['recommended_by'] = (doctor_profile_obj.rating) * 20
+    #             recent_review = {}
+    #             review_obj = DoctorReview.objects.filter(doctor=doctor_profile_obj).order_by('-created_at')
+    #             recent_review['review'] = review_obj[0].review
+    #             recent_review['name'] = review_obj[0].patient.patient.name
+    #             serialize_data1['recent_review'] = recent_review
+    #         else:
+    #             serialize_data1['friendliness_rating'] = 0
+    #             serialize_data1['explanation_rating'] = 0
+    #             serialize_data1['recommended_by'] = (doctor_profile_obj.rating) * 20
+    #             serialize_data1['recent_review'] = "No recent reivew"
+    #         return Response(serialize_data, status=status.HTTP_200_OK)
 
-        except Exception as exception:
-            return Response({"error": str(exception)},
-                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    #     except Exception as exception:
+    #         return Response({"error": str(exception)},
+    #                          status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class DoctorAvailabilityProfile(APIView):
@@ -364,11 +381,83 @@ class DoctorAvailabilityProfile(APIView):
                                  status=status.HTTP_404_NOT_FOUND)
             serialize_data = DoctorProfileSerializer(doctor_profile_obj).data
             serialize_data1 = serialize_data
-            today_slots = DoctorAvailability.objects.filter(doctor=doctor_profile_obj,
-                                                            time_slot__slot_time__date=datetime.utcnow().date(),
-                                                            time_slot__slot_time__gte=datetime.utcnow(),
-                                                            time_slot__is_booked=False).order_by('time_slot__slot_time')
-            serialize_data1['today_availability'] = DoctorAvailabilitySerializer(today_slots, many=True).data
+            start_date_of_week = datetime.now().date() - timedelta(days=datetime.now().date().weekday())
+            end_date_of_week = start_date_of_week + timedelta(days=6)
+            # print(start_date_of_week, end_date_of_week,  datetime.now().date().weekday())
+            week_date_list = [start_date_of_week + timedelta(days=i) for i in range(datetime.now().date().weekday(), 7)]
+            # print("#################", week_date_list)
+            for date in week_date_list:
+                today_slots = DoctorAvailability.objects.filter(doctor=doctor_profile_obj,
+                                                                time_slot__slot_time__date=date,#datetime.utcnow().date(),
+                                                                time_slot__slot_time__gte=datetime.utcnow(),
+                                                                time_slot__is_booked=False).order_by('time_slot__slot_time')
+                serialize_data1[str(date)+'total_available_slots'] = len(today_slots)
+                serialize_data1[str(date)+'availability'] = DoctorAvailabilitySerializer(today_slots, many=True).data
+
+            total_review = DoctorReview.objects.filter(doctor=doctor_profile_obj).count()
+            if total_review:
+                total_friendliness_rating = DoctorReview.objects.filter(friendliness_rating__gte="3",
+                                                                        doctor=doctor_profile_obj).count()
+                friendliness_rating  = (total_friendliness_rating/total_review) * 100
+                serialize_data1['friendliness_rating'] = friendliness_rating
+                total_review = DoctorReview.objects.filter(doctor=doctor_profile_obj).count()
+                total_explanation_rating = DoctorReview.objects.filter(explanation_rating__gte="3",
+                                                                       doctor=doctor_profile_obj).count()
+                explanation_rating  = (total_explanation_rating/total_review) * 100
+                serialize_data1['explanation_rating'] = explanation_rating
+                serialize_data1['recommended_by'] = (doctor_profile_obj.rating) * 20
+                recent_review = {}
+                review_obj = DoctorReview.objects.filter(doctor=doctor_profile_obj).order_by('-created_at')
+                recent_review['review'] = review_obj[0].review
+                recent_review['name'] = review_obj[0].patient.patient.name
+                serialize_data1['recent_review'] = recent_review
+            else:
+                serialize_data1['friendliness_rating'] = 0
+                serialize_data1['explanation_rating'] = 0
+                serialize_data1['recommended_by'] = (doctor_profile_obj.rating) * 20
+                serialize_data1['recent_review'] = "No recent reivew"
+            return Response(serialize_data, status=status.HTTP_200_OK)
+
+        except Exception as exception:
+            return Response({"error": str(exception)},
+                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class DoctorAvailabilityProfileByWeek(APIView):
+    """for getting particular doctor availabilities"""
+    permission_classes = [IsPatient, IsTokenValid]
+
+    def post(self, request):
+        try:
+            doctor_profile_obj = DoctorProfile.objects.filter(doctor__id=request.data.get('doctor_id')).first()
+            if not doctor_profile_obj:
+                return Response({"message": Messages.USER_NOT_EXISTS},
+                                 status=status.HTTP_404_NOT_FOUND)
+            serialize_data = DoctorProfileSerializer(doctor_profile_obj).data
+            serialize_data1 = serialize_data
+            start_date = datetime.fromisoformat(request.data.get('start_date')[:-1]).astimezone(timezone.utc)
+            start_date = start_date.strftime('%Y-%m-%d')
+            start_date = datetime.strptime(start_date,'%Y-%m-%d')
+            # start_date = datetime.strptime(request.data.get('start_date'),'%Y-%m-%d')
+            # end_date = datetime.strptime(request.data.get('end_date'),'%Y-%m-%d')
+            end_date = datetime.fromisoformat(request.data.get('end_date')[:-1]).astimezone(timezone.utc)
+            end_date = end_date.strftime('%Y-%m-%d')
+            end_date = datetime.strptime(end_date,'%Y-%m-%d')
+            week_date_list = []
+            doctor_slots_list = {}
+            for i in range(7):
+                if start_date + timedelta(days=i) <= end_date:
+                    week_date_list.append(start_date + timedelta(days=i))
+                else:
+                    break
+            for date in week_date_list:
+                today_slots = DoctorAvailability.objects.filter(doctor=doctor_profile_obj,
+                                                                time_slot__slot_time__date=date,                                                                time_slot__slot_time__gte=datetime.utcnow(),
+                                                                slot=request.data.get('slot'),
+                                                                time_slot__is_booked=False).order_by('time_slot__slot_time')
+                slots = DoctorAvailabilitySerializer(today_slots, many=True).data
+                doctor_slots_list[str(date)] = slots
+            serialize_data1['availability_slots'] = doctor_slots_list
             total_review = DoctorReview.objects.filter(doctor=doctor_profile_obj).count()
             if total_review:
                 total_friendliness_rating = DoctorReview.objects.filter(friendliness_rating__gte="3",
@@ -419,8 +508,9 @@ class DoctorAvailabilityTimeSlot(APIView):
                 serialize_data1['today_availability'] = DoctorAvailabilitySerializer(today_slots, many=True).data
             else:
                 today_slots = DoctorAvailability.objects.filter(doctor=doctor_data,
-                                                                time_slot__slot_time__date=datetime(datetime.utcnow().year,
-                                                                                                    datetime.utcnow().month, int(date), tzinfo=timezone.utc),
+                                                                time_slot__slot_time__date=request.data.get('date'),
+                                                                # time_slot__slot_time__date=datetime(datetime.utcnow().year,
+                                                                #                                     datetime.utcnow().month, int(date), tzinfo=timezone.utc),
                                                                 time_slot__is_booked=False).order_by('time_slot__slot_time')
                 serialize_data1['today_availability'] = DoctorAvailabilitySerializer(today_slots, many=True).data
             return Response(serialize_data, status=status.HTTP_200_OK)
@@ -436,17 +526,19 @@ class ConfirmAppointmentsView(APIView):
 
     def post(self, request):
         try:
+            #import pdb;pdb.set_trace()
             appointment_obj = Appointment.objects.filter(slot__id=request.data.get('slot_id')).first()
             if appointment_obj:
                 return Response({"message": Messages.SLOT_ALREADY_BOOKED},
                                  status=status.HTTP_208_ALREADY_REPORTED)
             slot_obj = DoctorSlot.objects.get(id=request.data.get('slot_id'))
-            request.data._mutable = True
+            print("########", request.data)
+            # request.data._mutable = True
             request.data['doctor'] = request.data.get('doctor_profile_id')#doctor_obj.doctor_profile.id
             request.data['patient'] = request.user.patient_profile.id
             request.data['slot'] = slot_obj.id
             request.data['status'] = 'UPCOMING'
-            request.data._mutable = True
+            # request.data._mutable = False
             with transaction.atomic():
                 serialize_data = ConfirmAppointmentsSerializer(data=request.data)
                 if serialize_data.is_valid(raise_exception=True):
@@ -469,6 +561,24 @@ class UpcomingAppointments(APIView):
             appointment_data = Appointment.objects.filter(patient=request.user.patient_profile,
                                                           status="UPCOMING")
             serialize_data = AppointmentsSerializer(appointment_data, many=True).data
+            if not serialize_data:
+                return Response({"message": Messages.NO_UPCOMING_APPOINTMENT},
+                                 status=status.HTTP_404_NOT_FOUND)
+            return Response(serialize_data, status=status.HTTP_200_OK)
+        except Exception as exception:
+            return Response({"error": str(exception)},
+                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class NextAppointments(APIView):
+    """for getting next appointments"""
+    permission_classes = [IsPatient, IsTokenValid]
+
+    def get(self, request):
+        try:
+            appointment_data = Appointment.objects.filter(patient=request.user.patient_profile,
+                                                          status="UPCOMING").order_by('slot__slot_time')
+            serialize_data = AppointmentsSerializer(appointment_data[0]).data
             if not serialize_data:
                 return Response({"message": Messages.NO_UPCOMING_APPOINTMENT},
                                  status=status.HTTP_404_NOT_FOUND)

@@ -2,17 +2,20 @@ from .base import *
 import datetime
 import os
 from decouple import config
+from corsheaders.defaults import default_headers 
 
 DEBUG = True
-# ALLOWED_HOSTS = ['192.168.1.44']
+# ALLOWED_HOSTS = ['192.168.1.44', 'localhost']
 # CORS_ORIGIN_ALLOW_ALL = False
 
 # CORS_ORIGIN_WHITELIST = (
 #     'http://192.168.1.44:8000',
+#     'http://localhost:3000'
 # )
 
 ALLOWED_HOSTS=['*']
 CORS_ORIGIN_ALLOW_ALL = True
+
 
 DATABASES = {
     'default': {
@@ -24,7 +27,6 @@ DATABASES = {
         'PORT': '',
     }
 }
-
 
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_HOST = 'smtp.gmail.com'
@@ -40,6 +42,12 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_jwt.authentication.JSONWebTokenAuthentication',
     ),
+
+    'DEFAULT_PARSER_CLASSES': (
+    'rest_framework.parsers.JSONParser',
+    'rest_framework.parsers.FormParser',
+    'rest_framework.parsers.MultiPartParser',
+    )
 }
 
 JWT_AUTH = {
@@ -77,3 +85,4 @@ JWT_AUTH = {
     'JWT_AUTH_COOKIE': None,
 
 }
+

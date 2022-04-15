@@ -104,6 +104,7 @@ class PatientMedicalProfileSerializer(serializers.ModelSerializer):
         instance.weight = validated_data.get('weight', instance.weight)
         instance.blood_group = validated_data.get('blood_group', instance.blood_group)
         instance.save()
+        print("#######", validated_data.get('blood_group', instance.blood_group))
         return instance
 
 

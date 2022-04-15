@@ -11,7 +11,7 @@ class PatientProfile(Base, models.Model):
 	patient = models.OneToOneField(UserAccount, related_name='patient_profile', on_delete=models.CASCADE)
 	patient_pic= models.ImageField(upload_to = 'images/', blank=True, null=True)
 	gender = models.CharField(max_length=20, null=True, blank=True)
-	dob = models.DateTimeField(null=True, blank=True)
+	dob = models.DateField(null=True, blank=True)
 	emergency_contact_name = models.CharField(max_length=255, null=True, blank=True)
 	emergency_contact_relation = models.CharField(max_length=255, null=True, blank=True)
 	emergency_contact_phone = models.CharField(max_length=255, null=True, blank=True)
@@ -197,26 +197,3 @@ class MyCoupon(Base):
 		return str(self.patient_coupon)
 
 
-# class OrderCart(Base):
-# 	mycart_order = models.ForeignKey(MyCart, related_name='mycart_order', on_delete=models.CASCADE)
-
-# 	def __str__(self):
-# 		return str(self.mycart_order)
-
-
-# class OrderItemConfirmed(Base):
-# 	COMPLETED = "COMPLETED"
-# 	YET_TO_BE_DELIVERED = "YET_TO_BE_DELIVERED"
-# 	CANCLE = "CANCLE"
-# 	STATUS_CHOICE = (
-# 		(COMPLETED, "COMPLETED"),
-# 		(YET_TO_BE_DELIVERED, "YET_TO_BE_DELIVERED"),
-# 		(CANCLE, "CANCLE")
-# 	)
-# 	order = models.ForeignKey(OrderCart, related_name='order_cart', on_delete=models.CASCADE)
-# 	order_status = models.CharField(max_length=50, choices=STATUS_CHOICE, default=YET_TO_BE_DELIVERED)
-# 	order_date = models.DateTimeField(auto_now=True, null=True, blank=True)
-# 	delivery_date = models.DateTimeField(null=True, blank=True)
-
-# 	def __str__(self):
-# 		return str(self.order)

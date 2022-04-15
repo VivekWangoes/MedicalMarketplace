@@ -35,7 +35,11 @@ class VerifyEmail(APIView):
     def post(self, request):
         try:
             current_time = datetime.now(timezone.utc)
-            user_obj = UserAccount.objects.filter(email_otp=request.data.get('otp')).first()
+            if not request.data.get('otp'):
+                return Response({"message":Messages.ENTER_OTP},
+                                 status=status.HTTP_400_BAD_REQUEST)
+            user_obj = UserAccount.objects.filter(email_otp=request.data.get('otp'),
+                                                  email=request.data.get('email')).first()
             if not user_obj:
                 return Response({'message': Messages.OTP_WRONG}, 
                                  status=status.HTTP_400_BAD_REQUEST)
@@ -43,20 +47,22 @@ class VerifyEmail(APIView):
             time_delta = (current_time - user_obj.email_otp_created)
             total_seconds = time_delta.total_seconds()
             minutes = total_seconds / 60
-            if minutes > 2:
-                user_obj.email_otp = None
-                user_obj.save()
+            if minutes > 5:
+                # user_obj.email_otp = None
+                # user_obj.save()
                 return Response({'message': Messages.OTP_TIME_EXPIRED}, 
                                  status=status.HTTP_408_REQUEST_TIMEOUT)
 
             if user_obj.is_email_verified == True:
-                return Response({'message': Messages.EMAIL_AlREADY_VERIFIED}, 
+                # user_obj.email_otp = None
+                # user_obj.save()
+                return Response({'message': Messages.EMAIL_ALREADY_VERIFIED}, 
                                  status=status.HTTP_208_ALREADY_REPORTED)
             
             with transaction.atomic():
                 if user_obj.email_otp == otp:
                     user_obj.is_email_verified = True
-                    user_obj.email_otp = None
+                    # user_obj.email_otp = None
                     user_obj.save()
                     return Response({'message': Messages.EMAIL_VERIFIED},
                                      status=status.HTTP_202_ACCEPTED)
@@ -88,7 +94,11 @@ class LoginWithOTP(APIView):
 
     def post(self, request):
         try:
-            user_obj = UserAccount.objects.filter(login_otp=request.data.get('otp')).first()
+            if not request.data.get('otp'):
+                return Response({"message":Messages.ENTER_OTP},
+                                 status=status.HTTP_400_BAD_REQUEST)
+            user_obj = UserAccount.objects.filter(login_otp=request.data.get('otp'),
+                                                  email=request.data.get('email')).first()
             if not user_obj:
                 return Response({'message': Messages.OTP_WRONG}, status=status.HTTP_400_BAD_REQUEST)
             otp = request.data.get('otp')
@@ -99,13 +109,13 @@ class LoginWithOTP(APIView):
                 minutes = total_seconds / 60
                 with transaction.atomic():
                     if minutes > 5:
-                        user_obj.login_otp = None
-                        user_obj.save()
+                        # user_obj.login_otp = None
+                        # user_obj.save()
                         return Response({'message': Messages.OTP_TIME_EXPIRED}, 
                                          status=status.HTTP_408_REQUEST_TIMEOUT)
                     if user_obj.login_otp == otp:
-                        user_obj.login_otp = None
-                        user_obj.save()
+                        # user_obj.login_otp = None
+                        # user_obj.save()
                         jwt_payload_handler = api_settings.JWT_PAYLOAD_HANDLER
                         jwt_encode_handler = api_settings.JWT_ENCODE_HANDLER
                         payload = jwt_payload_handler(user_obj)
@@ -128,7 +138,7 @@ class LoginWithOTP(APIView):
         try:
             with transaction.atomic():
                 email = request.data.get('email')
-                user_obj = UserAccount.objects.get(email=email.lower())
+                user_obj = UserAccount.objects.filter(email=email.lower()).first()
                 if not user_obj:
                     return Response({'message': Messages.USER_NOT_EXISTS},
                                      status=status.HTTP_404_NOT_FOUND)
@@ -147,10 +157,13 @@ class SignIn(APIView):
     permission_classes = [AllowAny,]
 
     def post(self, request):
-            email = request.data.get('email').lower()
+            email = request.data.get('email')
             password = request.data.get('password')
             try:
-                user_obj = UserAccount.objects.get(email=email)
+                user_obj = UserAccount.objects.filter(email=email.lower()).first()
+                if not user_obj:
+                    return Response({"message":Messages.USER_NOT_EXISTS},
+                                     status=status.HTTP_404_NOT_FOUND)
                 if user_obj.is_email_verified == True:
                     user = authenticate(email=email, password=password)
                     if user:
@@ -192,8 +205,10 @@ class UserLogout(APIView):
 
     def post(self,request):
         try:
+            print("logout**************",request.user)
             with transaction.atomic():
                 token = request.auth.decode("utf-8")
+                print("Token******", token)
                 BlackListedToken.objects.create(user=request.user, token=token)
                 return Response({'message': Messages.USER_LOGGED_OUT},
                                  status=status.HTTP_200_OK)
@@ -225,6 +240,7 @@ class ContactSupportQueryRegister(APIView):
 
     def post(self, request):
         try:
+            #import pdb;pdb.set_trace()
             with transaction.atomic():
                 serialize_data = ContactSupportSerializer(data=request.data)
                 if serialize_data.is_valid(raise_exception=True):

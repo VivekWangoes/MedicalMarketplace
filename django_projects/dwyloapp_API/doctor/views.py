@@ -47,10 +47,14 @@ class DoctorRegister(APIView):
                                                            term_condition=True)
                 user_obj.save()
                 doctor_profile_obj = DoctorProfile.objects.create(doctor=user_obj,
+                                                                  doctor_pic=doctor_profile.get('doctor_pic'),
                                                                   gender=doctor_profile.get('gender'),
                                                                   career_started=doctor_profile.get('career_started'),
                                                                   specialty=doctor_profile.get('specialty'),
-                                                                  location_city=doctor_profile.get('location_city'),
+                                                                  country=doctor_profile.get('country'),
+                                                                  state=doctor_profile.get('state'),
+                                                                  city=doctor_profile.get('city'),
+                                                                  locality=doctor_profile.get('locality'),
                                                                   clinic=doctor_profile.get('clinic'),
                                                                   consultation_fees=doctor_profile.get('consultation_fees'),
                                                                   expertise_area=doctor_profile.get('expertise_area'),
