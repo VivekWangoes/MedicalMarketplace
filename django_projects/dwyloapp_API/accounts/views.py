@@ -11,7 +11,8 @@ from django.contrib import messages
 from django.db import transaction
 from django.urls import reverse
 from datetime import datetime, timezone
- 
+
+import requests
 from rest_framework.permissions import IsAuthenticated, AllowAny, IsAdminUser
 from rest_framework_jwt.settings import api_settings
 from rest_framework.response import Response
@@ -157,36 +158,36 @@ class SignIn(APIView):
     permission_classes = [AllowAny,]
 
     def post(self, request):
-            email = request.data.get('email')
-            password = request.data.get('password')
-            try:
-                user_obj = UserAccount.objects.filter(email=email.lower()).first()
-                if not user_obj:
-                    return Response({"message":Messages.USER_NOT_EXISTS},
-                                     status=status.HTTP_404_NOT_FOUND)
-                if user_obj.is_email_verified == True:
-                    user = authenticate(email=email, password=password)
-                    if user:
-                        login(request, user)
-                        jwt_payload_handler = api_settings.JWT_PAYLOAD_HANDLER
-                        jwt_encode_handler = api_settings.JWT_ENCODE_HANDLER
-                        payload = jwt_payload_handler(user)
-                        token = jwt_encode_handler(payload)
-                        previous_tokens = BlackListedToken.objects.filter(user=user)
-                        previous_tokens.delete()
-                        return Response({'message': Messages.USER_LOGGED_IN, 
-                                         'id': user_obj.id, 'user': str(user_obj),
-                                         'role': user_obj.role,'token': token},
-                                         status=status.HTTP_200_OK)
-                    else:
-                        return Response({'message': Messages.INVALID_CREDENTIAL},
-                                         status=status.HTTP_400_BAD_REQUEST)
+        email = request.data.get('email')
+        password = request.data.get('password')
+        try:
+            user_obj = UserAccount.objects.filter(email=email.lower()).first()
+            if not user_obj:
+                return Response({"message":Messages.USER_NOT_EXISTS},
+                                 status=status.HTTP_404_NOT_FOUND)
+            if user_obj.is_email_verified == True:
+                user = authenticate(email=email, password=password)
+                if user:
+                    login(request, user)
+                    jwt_payload_handler = api_settings.JWT_PAYLOAD_HANDLER
+                    jwt_encode_handler = api_settings.JWT_ENCODE_HANDLER
+                    payload = jwt_payload_handler(user)
+                    token = jwt_encode_handler(payload)
+                    previous_tokens = BlackListedToken.objects.filter(user=user)
+                    previous_tokens.delete()
+                    return Response({'message': Messages.USER_LOGGED_IN, 
+                                     'id': user_obj.id, 'user': str(user_obj),
+                                     'role': user_obj.role,'token': token},
+                                     status=status.HTTP_200_OK)
                 else:
-                    return Response({'message': Messages.FIRST_VERIFY_EMAIL},
-                                     status=status.HTTP_406_NOT_ACCEPTABLE)
-            except Exception as exception:
-                return Response({'error': str(exception)},
-                                 status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                    return Response({'message': Messages.INVALID_CREDENTIAL},
+                                     status=status.HTTP_400_BAD_REQUEST)
+            else:
+                return Response({'message': Messages.FIRST_VERIFY_EMAIL},
+                                 status=status.HTTP_406_NOT_ACCEPTABLE)
+        except Exception as exception:
+            return Response({'error': str(exception)},
+                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class UsersView(APIView):
@@ -315,3 +316,23 @@ class ForgotPassword(APIView):
         except Exception as exception:
             return Response({"error": str(exception)},
                              status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class GoogleTokenGenerate(APIView):
+    """generate access token for google token"""
+    permission_classes = [AllowAny,]
+
+    def post(self, request):
+        print("google toke generate")
+        grant_type = "convert_token"
+        client_id = "NqWlYjj0qQnG1HxDMI3qKp4pSIZ3X9z9l9RDa58i"
+        client_secret = "daa8wTn5fiFfw95IPWLDr7APgVhSD5BqsIR0gCcEgcDMNEENXjbVQPuKqmw4Up4UpysvHktd0ulRYm2JwhRlzsB6h8Drrg07tYfuVb79ODdrzVkccUkVpl4D3bZZSHzd"
+        backend = "google-oauth2"
+        google_token = request.POST.get('token')
+        print(google_token)
+        access_token = requests.post("http://localhost:8000/auth/convert-token", data={
+            "grant_type": grant_type, "client_id": client_id, "client_secret": client_secret,
+            "backend": backend, "token": google_token
+        })
+        print(access_token)
+        return Response({"token": access_token}, status=status.HTTP_200_OK)

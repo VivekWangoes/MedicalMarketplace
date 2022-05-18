@@ -4,7 +4,7 @@ from core.models import Base
 
 
 class UserAccountManager(BaseUserManager):
-    def create_user(self, email, name, password, mobile_no, offer, role, term_condition):
+    def create_user(self, email, name='', password=None, mobile_no=None, offer=False, role=None, term_condition=False):
         if not email:
             raise ValueError('user must have an email')
 
@@ -54,9 +54,9 @@ class UserAccount(Base, AbstractBaseUser, PermissionsMixin):
         (PATIENT, 'PATIENT')
     )
 
-    role = models.IntegerField(choices=ROLE_TYPES)
+    role = models.IntegerField(choices=ROLE_TYPES, null=True, blank=True)
     email = models.EmailField(max_length=254, unique=True)
-    name = models.CharField(max_length=150)
+    name = models.CharField(max_length=150, null=True, blank=True)
     email_otp = models.CharField(max_length=5,null=True, blank=True)
     email_otp_created = models.DateTimeField(null=True, blank=True)
     login_otp = models.CharField(max_length=5,null=True, blank=True)

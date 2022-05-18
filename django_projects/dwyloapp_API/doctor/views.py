@@ -1,6 +1,8 @@
 from django.shortcuts import render
 from django.db import transaction
-from datetime import datetime
+from datetime import datetime, timedelta
+import math
+import json
 
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
@@ -37,6 +39,7 @@ class DoctorRegister(APIView):
                 return Response({'error':v.errors},
                                  status=status.HTTP_400_BAD_REQUEST)
             doctor_profile = request.data.get('doctor_profile',{})
+            doctor_set_time = request.data.get('doctor_set_time',{})
             with transaction.atomic():
                 user_obj = UserAccount.objects.create_user(email=request.data.get('email'),
                                                            name=request.data.get('name'),
@@ -52,7 +55,9 @@ class DoctorRegister(APIView):
                                                                   career_started=doctor_profile.get('career_started'),
                                                                   specialty=doctor_profile.get('specialty'),
                                                                   country=doctor_profile.get('country'),
+                                                                  country_code=doctor_profile.get('country_code'),
                                                                   state=doctor_profile.get('state'),
+                                                                  state_code=doctor_profile.get('state_code'),
                                                                   city=doctor_profile.get('city'),
                                                                   locality=doctor_profile.get('locality'),
                                                                   clinic=doctor_profile.get('clinic'),
@@ -60,6 +65,11 @@ class DoctorRegister(APIView):
                                                                   expertise_area=doctor_profile.get('expertise_area'),
                                                                   booking_fees=doctor_profile.get('booking_fees'))
                 doctor_profile_obj.save()
+                doctor_settime_obj = DoctorSetTime.objects.create(doctor=doctor_profile_obj,
+                                                                  start_time=doctor_set_time.get('start_time'),
+                                                                  end_time=doctor_set_time.get('end_time'),
+                                                                  interval=doctor_set_time.get('interval'))
+                doctor_settime_obj.save()
                 send_otp_email_verify(user_obj.email, user_obj)
                 return Response({'message': Messages.ACCOUNT_CREATED},
                                  status=status.HTTP_200_OK)
@@ -74,18 +84,37 @@ class DoctorProfileView(APIView):
 
     def get(self, request):
         try:
-            serialize_data = DoctorProfileSerializer(request.user.doctor_profile)
-            return Response(serialize_data.data, status=status.HTTP_200_OK)
+            serialize_data = DoctorProfileSerializer(request.user.doctor_profile).data
+            doctor = dict(serialize_data['doctor'])
+            doctor = [key for key in doctor if doctor[key] is not None]
+            doctor_profile = [key for key in serialize_data if serialize_data[key] is not None]
+            completed_fields = (len(doctor)-4) + (len(doctor_profile)-3)
+            percentage = math.ceil((completed_fields / 17) * 100)
+            serialize_data['complete_profile'] = str(percentage)# + "%"
+            return Response(serialize_data, status=status.HTTP_200_OK)
         except Exception as exception:
             return Response({"error": str(exception)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def put(self, request):
         try:
+            # import pdb;pdb.set_trace()
+            print(request.data)
+            data = dict(zip(request.data.keys(), request.data.values()))
+            data["doctor"] = json.loads(data.get("doctor"))
+            if data.get('doctor_pic') == "":
+                data['doctor_pic'] = None
+            if data.get('career_started') == "":
+                data['career_started'] = None
+            if data.get('consultation_fees') == "":
+                data['consultation_fees'] = None
+            if data.get('booking_fees') == "":
+                data['booking_fees'] = None
+            
             serialize_data = DoctorProfileSerializer(instance=request.user,
-                                                     data=request.data,
+                                                     data=data,
                                                      partial=True)
             if serialize_data.is_valid(raise_exception=True):
-                serialize_data.save()           
+                serialize_data.save()
             return Response({'message':Messages.PROFILE_UPDATED},
                              status=status.HTTP_200_OK)
         except Exception as exception:
@@ -110,6 +139,39 @@ class DoctorProfileView(APIView):
                                  status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+class DoctorSetTimeView(APIView):
+    """this class id for set and get time interval of doctor"""
+    permission_classes = [IsDoctor, IsTokenValid]
+
+    def  get(self, request):
+        try:
+            serialize_data = DoctorSetTimeSerializer(request.user.doctor_profile.doctor_set_time).data
+            start_time = datetime.strptime(serialize_data['start_time'], '%H:%M:%S')
+            end_time = datetime.strptime(serialize_data['end_time'], '%H:%M:%S')
+            slot_list = []
+            while (start_time <= end_time):
+                slot_list.append(start_time.time())
+                start_time = start_time + timedelta(minutes=int(serialize_data['interval']))
+            serialize_data['slot_time_interval'] = slot_list
+            return Response(serialize_data, status=status.HTTP_200_OK)
+        except Exception as exception:
+            return Response({"error": str(exception)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def put(self, request):
+        try:
+            print(request.data)
+            serialize_data = DoctorSetTimeSerializer(instance=request.user.doctor_profile.doctor_set_time,
+                                                     data=request.data,
+                                                     partial=True)
+            if serialize_data.is_valid(raise_exception=True):
+                serialize_data.save()
+                return Response({'message': Messages.SET_TIME},
+                                 status=status.HTTP_200_OK)
+        except Exception as exception:
+                return Response({'error': str(exception)},
+                                 status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 class DoctorAvailabilitySet(APIView):
     """This class is used for set doctor availability"""
     permission_classes = [IsDoctor, IsTokenValid]
@@ -127,8 +189,7 @@ class DoctorAvailabilitySet(APIView):
                 return Response({'error': v.errors},
                                  status=status.HTTP_400_BAD_REQUEST )
             slots = DoctorAvailability.objects.filter(doctor=request.user.doctor_profile,
-                                                      slot_date=request.data.get('slot_date')).\
-                                                      filter(time_slot__slot_time__in=request.data.get('slot_time'))
+                                                      slot_date=request.data.get('slot_date')).filter(time_slot__slot_time__in=request.data.get('slot_time'))
             if slots:
                 return Response({'message': Messages.DATETIME_ALREADY_PRESENT},
                                  status=status.HTTP_409_CONFLICT) 

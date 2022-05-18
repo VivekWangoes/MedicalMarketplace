@@ -2,11 +2,13 @@ from django.shortcuts import render
 from django.db import transaction
 from django.db.models import Sum, Count
 from django.core.exceptions import ValidationError
+from django.db.models import Q
 from datetime import datetime, timedelta, timezone
 import time
 import math
 import string
 import random
+import json
 
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
@@ -95,10 +97,12 @@ class PatientProfileView(APIView):
 
     def put(self, request):
         try:
-            #import pdb;pdb.set_trace()
-            print(request.FILES, request.data)
+            data = dict(zip(request.data.keys(), request.data.values()))
+            data['patient'] = json.loads(data['patient'])
+            if data.get('patient_pic') == "":
+                data['patient_pic'] = None
             serialize_data = PatientProfileSerializer(instance=request.user,
-                                                      data=request.data,
+                                                      data=data,
                                                       partial=True)
             if serialize_data.is_valid(raise_exception=True):
                 serialize_data.save()           
@@ -252,50 +256,19 @@ class PatientCompleteProfile(APIView):
             life_style = [key for key in life_style if life_style[key] is not None]
             complete_fields = (len(patient_profile)-3) + (len(patient)-3) + (len(medical_profile)-4) + (len(life_style)-4) 
             percentage = math.ceil((complete_fields / 25) * 100)
-            serialize_data['complete_profile'] = str(percentage) + "%"
+            serialize_data['complete_profile'] = str(percentage)# + "%"
             return Response(serialize_data, status=status.HTTP_200_OK)
         except Exception as exception:
                 return Response({'error': str(exception)},
                                  status = status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-from django.db.models import Q
 class DoctorSearchView(APIView):
     """This class is used for return Doctor based on speciality,name , clinic"""
     permission_classes = [IsPatient, IsTokenValid]
 
     def post(self, request):
         try:
-            # import pdb;pdb.set_trace()
-            # doctor_data = DoctorProfile.objects.filter(
-            #             specialty__icontains=request.data.get('key')) | DoctorProfile.objects.filter(
-            #             clinic__icontains=request.data.get('key')) | DoctorProfile.objects.filter(
-            #             doctor__name__icontains=request.data.get('key')) | DoctorProfile.objects.all().filter(
-            #             expertise_area__icontains=request.data.get('key'))
-            # doctor_data = DoctorProfile.objects.filter(
-            #             Q(specialty__icontains=request.data.get('key')), (Q(country__icontains=request.data.get('location')) & 
-            #             Q(city__icontains=request.data.get('city'))) |
-            #             Q(state__icontains=request.data.get('location')) & Q(city__icontains=request.data.get('city')) | Q(city__icontains=request.data.get('location')) |
-            #             Q(locality__icontains=request.data.get('location')) & Q(city__icontains=request.data.get('city'))
-            #             ) \
-            #             | DoctorProfile.objects.filter(Q(clinic__icontains=request.data.get('key')), Q(country__icontains=request.data.get('location')) &
-            #             Q(city__icontains=request.data.get('city')) |
-            #             Q(state__icontains=request.data.get('location')) & Q(city__icontains=request.data.get('city')) | 
-            #             Q(city__icontains=request.data.get('location')) |
-            #             Q(locality__icontains=request.data.get('location'))  & Q(city__icontains=request.data.get('city'))
-            #             ) \
-            #             | DoctorProfile.objects.filter(Q(doctor__name__icontains=request.data.get('key')), Q(country__icontains=request.data.get('location')) &
-            #             Q(city__icontains=request.data.get('city')) |
-            #             Q(state__icontains=request.data.get('location')) & Q(city__icontains=request.data.get('city')) | Q(city__icontains=request.data.get('location')) |
-            #             Q(locality__icontains=request.data.get('location')) & Q(city__icontains=request.data.get('city'))
-            #             )\
-            #             | DoctorProfile.objects.all().filter(Q(expertise_area__icontains=request.data.get('key')), Q(country__icontains=request.data.get('location')) &
-            #             Q(city__icontains=request.data.get('city')) |
-            #             Q(state__icontains=request.data.get('location')) & Q(city__icontains=request.data.get('city')) |
-            #             Q(city__icontains=request.data.get('location')) |
-            #             Q(locality__icontains=request.data.get('location')) & Q(city__icontains=request.data.get('city'))
-            #             )
-            print(request.data)
             doctor_data = DoctorProfile.objects.filter((Q(specialty__icontains=request.data.get('key')) | Q(clinic__icontains=request.data.get('key')) |
                         Q(doctor__name__icontains=request.data.get('key')) | Q(expertise_area__icontains=request.data.get('key'))),
                         (Q(country__icontains=request.data.get('location')) | Q(state__icontains=request.data.get('location')) |
@@ -532,7 +505,6 @@ class ConfirmAppointmentsView(APIView):
                 return Response({"message": Messages.SLOT_ALREADY_BOOKED},
                                  status=status.HTTP_208_ALREADY_REPORTED)
             slot_obj = DoctorSlot.objects.get(id=request.data.get('slot_id'))
-            print("########", request.data)
             # request.data._mutable = True
             request.data['doctor'] = request.data.get('doctor_profile_id')#doctor_obj.doctor_profile.id
             request.data['patient'] = request.user.patient_profile.id
@@ -577,7 +549,8 @@ class NextAppointments(APIView):
     def get(self, request):
         try:
             appointment_data = Appointment.objects.filter(patient=request.user.patient_profile,
-                                                          status="UPCOMING").order_by('slot__slot_time')
+                                                          status="UPCOMING",
+                                                          slot__slot_time__gte=datetime.now()).order_by('slot__slot_time')
             serialize_data = AppointmentsSerializer(appointment_data[0]).data
             if not serialize_data:
                 return Response({"message": Messages.NO_UPCOMING_APPOINTMENT},

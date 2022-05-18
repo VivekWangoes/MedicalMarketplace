@@ -21,6 +21,8 @@ from rest_framework_jwt.views import obtain_jwt_token, refresh_jwt_token, verify
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    # path('o/', include('oauth2_provider.urls', namespace='oauth2_provider')),
+    path('auth/', include('rest_framework_social_oauth2.urls')),
     path('api-auth/', include('rest_framework.urls')),
     #Account app url
     path('accounts/', include('accounts.urls')),

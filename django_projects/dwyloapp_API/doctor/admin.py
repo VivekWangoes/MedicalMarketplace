@@ -14,3 +14,5 @@ admin.site.register(Appointment)
 admin.site.register(DoctorReview)
 
 admin.site.register(ConsultationDetail)
+
+admin.site.register(DoctorSetTime)

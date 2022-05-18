@@ -11,9 +11,9 @@ class DoctorProfile(Base):
 	OTHER = 'OTHER'
 	INCOMPLETED = 'Incompleted'
 	GENDER_TYPE = (
-		(MALE, 'Male'),
-		(FEMALE, 'Female'),
-		(OTHER, 'Other')
+		(MALE, 'MALE'),
+		(FEMALE, 'FEMALE'),
+		(OTHER, 'OTHER')
 	)
 	doctor = models.OneToOneField(UserAccount, related_name='doctor_profile', on_delete=models.CASCADE)
 	doctor_pic= models.ImageField(upload_to = 'images/', blank=True, null=True)
@@ -21,7 +21,9 @@ class DoctorProfile(Base):
 	career_started = models.DateField(blank=True, null=True)
 	specialty = models.CharField(max_length=50, blank=True, null=True)
 	country = models.CharField(max_length=50, blank=True, null=True)
+	country_code = models.CharField(max_length=50, blank=True, null=True)
 	state = models.CharField(max_length=50, blank=True, null=True)
+	state_code = models.CharField(max_length=50, blank=True, null=True)
 	city = models.CharField(max_length=50, blank=True, null=True)
 	locality = models.CharField(max_length=50, blank=True, null=True)
 	clinic = models.CharField(max_length=100, blank=True, null=True)
@@ -37,6 +39,16 @@ class DoctorProfile(Base):
 	def save(self, *args, **kwargs):
 		self.full_clean()
 		super().save(*args, **kwargs)
+
+
+class DoctorSetTime(Base):
+	doctor = models.OneToOneField(DoctorProfile, related_name='doctor_set_time', on_delete=models.CASCADE)
+	start_time = models.TimeField(blank=True, null=True)
+	end_time = models.TimeField(blank=True, null=True)
+	interval = models.IntegerField(blank=True, null=True)
+
+	def __str__(self):
+		return str(self.doctor)
 
 
 class DoctorSlot(Base):
@@ -103,3 +115,5 @@ class ConsultationDetail(Base):
 	lab_test = models.CharField(max_length=50, null=True, blank=True)
 	next_appointment = models.ForeignKey(Appointment, related_name='next_appointment', on_delete=models.CASCADE, null=True, blank=True)
 	health_status = models.CharField(max_length=50, blank=True, null=True)
+
+

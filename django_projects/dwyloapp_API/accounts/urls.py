@@ -15,4 +15,6 @@ urlpatterns = [
     path('contact-support-query',account_view.ContactSupportQueryRegister.as_view()),
     path('forgot-password' ,account_view.ForgotPassword.as_view() , name="forgot_password"),
     path('change-password/<uidb64>/<token>/' , account_view.change_password , name="change_password"),
+
+    path('google-token', account_view.GoogleTokenGenerate.as_view(), name="google_token"),
   ]

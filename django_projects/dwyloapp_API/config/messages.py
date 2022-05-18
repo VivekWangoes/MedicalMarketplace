@@ -60,3 +60,4 @@ class Messages:
 	COUPON_NOT_AVAILABLE = "Coupon not available"
 	COUPON_NOT_APPLICABLE = "coupon not applicable please increase your cart amount"
 	COUPON_EXPIRED = "Your coupon is expired"
+	SET_TIME = "Time interval is set"

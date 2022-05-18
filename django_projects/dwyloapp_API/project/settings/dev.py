@@ -23,8 +23,8 @@ DATABASES = {
         'NAME': config('DB_NAME'), 
         'USER': config('DB_USER'),  
         'PASSWORD': config('DB_PASSWORD'),
-        'HOST': '127.0.0.1', 
-        'PORT': '',
+        'HOST': config('DB_HOST'), 
+        'PORT': config('DB_PORT'),
     }
 }
 
@@ -35,20 +35,39 @@ EMAIL_HOST_USER = config('EMAIL_HOST_USER')#os.environ.get('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD')#os.environ.get('EMAIL_HOST_PASSWORD')
 EMAIL_USE_TLS = True
 
+
 REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
     ),
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_jwt.authentication.JSONWebTokenAuthentication',
+        'oauth2_provider.contrib.rest_framework.OAuth2Authentication',
+        'rest_framework_social_oauth2.authentication.SocialAuthentication',
     ),
-
-    'DEFAULT_PARSER_CLASSES': (
-    'rest_framework.parsers.JSONParser',
-    'rest_framework.parsers.FormParser',
-    'rest_framework.parsers.MultiPartParser',
-    )
 }
+
+AUTHENTICATION_BACKENDS = (
+    # Google OAuth2
+    'social_core.backends.google.GoogleOAuth2',
+    
+    'django.contrib.auth.backends.ModelBackend', # To keep the Browsable API
+    'oauth2_provider.backends.OAuth2Backend',
+)
+
+OAUTH2_PROVIDER = {
+    # this is the list of available scopes
+    'SCOPES': {'read': 'Read scope', 'write': 'Write scope', 'groups': 'Access to your groups'}
+}
+
+SOCIAL_AUTH_GOOGLE_OAUTH2_KEY = '286763141053-6obqmg3ql3jt90j4a1siu5qkrqk4jlaa.apps.googleusercontent.com'
+SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET = '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'
+
+# Define SOCIAL_AUTH_GOOGLE_OAUTH2_SCOPE to get extra permissions from Google.
+# SOCIAL_AUTH_GOOGLE_OAUTH2_SCOPE = [
+#     'https://www.googleapis.com/auth/userinfo.email',
+#     'https://www.googleapis.com/auth/userinfo.profile',
+# ]
 
 JWT_AUTH = {
     'JWT_ENCODE_HANDLER':
