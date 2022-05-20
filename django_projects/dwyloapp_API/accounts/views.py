@@ -11,10 +11,11 @@ from django.contrib import messages
 from django.db import transaction
 from django.urls import reverse
 from datetime import datetime, timezone
+from rest_framework_simplejwt.tokens import RefreshToken
 
 import requests
 from rest_framework.permissions import IsAuthenticated, AllowAny, IsAdminUser
-from rest_framework_jwt.settings import api_settings
+# from rest_framework_jwt.settings import api_settings
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import status
@@ -25,7 +26,7 @@ from project.settings.dev import EMAIL_HOST_USER
 from config.messages import Messages
 from .permissions import IsTokenValid,IsDoctor,IsPatient
 from .models import UserAccount,BlackListedToken, ContactSupport
-from .serializers import ContactSupportSerializer, UserSerializerForView
+from .serializers import ContactSupportSerializer, UserSerializerForView, UserSerializer
 # Create your views here.
 
 
@@ -115,15 +116,16 @@ class LoginWithOTP(APIView):
                         return Response({'message': Messages.OTP_TIME_EXPIRED}, 
                                          status=status.HTTP_408_REQUEST_TIMEOUT)
                     if user_obj.login_otp == otp:
+
                         # user_obj.login_otp = None
                         # user_obj.save()
-                        jwt_payload_handler = api_settings.JWT_PAYLOAD_HANDLER
-                        jwt_encode_handler = api_settings.JWT_ENCODE_HANDLER
-                        payload = jwt_payload_handler(user_obj)
-                        token = jwt_encode_handler(payload)
+                        refresh = RefreshToken.for_user(user_obj)
+                        access = str(refresh.access_token)
+                        refresh = str(refresh)
                         return Response({'message': Messages.USER_LOGGED_IN, 
                                          'id': user_obj.id, 'user': str(user_obj),
-                                         'role': user_obj.role,'token': token},
+                                         'role': user_obj.role,'access': access,
+                                         'refresh': refresh},
                                          status=status.HTTP_200_OK)
                     else:
                         return Response({'message': Messages.OTP_WRONG},
@@ -165,19 +167,25 @@ class SignIn(APIView):
             if not user_obj:
                 return Response({"message":Messages.USER_NOT_EXISTS},
                                  status=status.HTTP_404_NOT_FOUND)
+
             if user_obj.is_email_verified == True:
                 user = authenticate(email=email, password=password)
                 if user:
                     login(request, user)
-                    jwt_payload_handler = api_settings.JWT_PAYLOAD_HANDLER
-                    jwt_encode_handler = api_settings.JWT_ENCODE_HANDLER
-                    payload = jwt_payload_handler(user)
-                    token = jwt_encode_handler(payload)
-                    previous_tokens = BlackListedToken.objects.filter(user=user)
-                    previous_tokens.delete()
+                    # jwt_payload_handler = api_settings.JWT_PAYLOAD_HANDLER
+                    # jwt_encode_handler = api_settings.JWT_ENCODE_HANDLER
+                    # payload = jwt_payload_handler(user)
+                    # token = jwt_encode_handler(payload)
+                    # token = req.session.accessToken
+                    refresh = RefreshToken.for_user(user)
+                    access = str(refresh.access_token)
+                    refresh = str(refresh)
+                    # previous_tokens = BlackListedToken.objects.filter(user=user)
+                    # previous_tokens.delete()
                     return Response({'message': Messages.USER_LOGGED_IN, 
                                      'id': user_obj.id, 'user': str(user_obj),
-                                     'role': user_obj.role,'token': token},
+                                     'role': user_obj.role, 'access': access, 
+                                     'refresh': refresh},
                                      status=status.HTTP_200_OK)
                 else:
                     return Response({'message': Messages.INVALID_CREDENTIAL},

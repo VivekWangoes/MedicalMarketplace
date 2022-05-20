@@ -13,7 +13,7 @@ from cerberus import Validator
 from utility.send_otp_email import send_otp_email_verify
 from config.messages import Messages
 from accounts.models import UserAccount
-from .permissions import IsDoctor, IsTokenValid
+from .permissions import IsDoctor
 from .serializers import *
 from .models import *
 # Create your views here.
@@ -80,7 +80,7 @@ class DoctorRegister(APIView):
 
 class DoctorProfileView(APIView):
     """This class is used for get and update doctor profile"""
-    permission_classes = [IsDoctor, IsTokenValid]
+    permission_classes = [IsDoctor,]
 
     def get(self, request):
         try:
@@ -141,7 +141,7 @@ class DoctorProfileView(APIView):
 
 class DoctorSetTimeView(APIView):
     """this class id for set and get time interval of doctor"""
-    permission_classes = [IsDoctor, IsTokenValid]
+    permission_classes = [IsDoctor,]
 
     def  get(self, request):
         try:
@@ -174,7 +174,7 @@ class DoctorSetTimeView(APIView):
 
 class DoctorAvailabilitySet(APIView):
     """This class is used for set doctor availability"""
-    permission_classes = [IsDoctor, IsTokenValid]
+    permission_classes = [IsDoctor,]
 
     def post(self,request):
         try:
@@ -217,7 +217,7 @@ class DoctorAvailabilitySet(APIView):
 
 class UpcomingAppointments(APIView):
     """for getting upcoming appointments"""
-    permission_classes = [IsDoctor, IsTokenValid]
+    permission_classes = [IsDoctor,]
 
     def get(self, request):
         try:
@@ -235,7 +235,7 @@ class UpcomingAppointments(APIView):
 
 class CompletedAppointments(APIView):
     """for getting upcoming appointments"""
-    permission_classes = [IsDoctor, IsTokenValid]
+    permission_classes = [IsDoctor,]
 
     def get(self, request):
         try:
@@ -253,7 +253,7 @@ class CompletedAppointments(APIView):
 
 class DoctorAllReview(APIView):
     """get all review by doctor"""
-    permission_classes = [IsDoctor, IsTokenValid]
+    permission_classes = [IsDoctor,]
 
     def get(self, request):
         try:
@@ -270,7 +270,7 @@ class DoctorAllReview(APIView):
 
 class ConsultationDetailView(APIView):
     """Give consultation detail given by doctor"""
-    permission_classes = [IsDoctor, IsTokenValid]
+    permission_classes = [IsDoctor,]
 
     def get(self, request):
         try:

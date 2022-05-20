@@ -19,7 +19,7 @@ from cerberus import Validator
 from utility.send_otp_email import send_otp_email_verify
 from accounts.models import UserAccount
 from config.messages import Messages
-from .permissions import IsPatient, IsTokenValid
+from .permissions import IsPatient
 from .models import *
 from .serializers import *
 from doctor.models import(DoctorProfile, DoctorAvailability, DoctorSlot,
@@ -85,7 +85,7 @@ class PatientRegister(APIView):
 
 class PatientProfileView(APIView):
     """patient personal profile update"""
-    permission_classes = [IsPatient, IsTokenValid]
+    permission_classes = [IsPatient,]
 
     def get(self, request):
         try:
@@ -116,7 +116,7 @@ class PatientProfileView(APIView):
 
 class AllergyView(APIView):
     """Get all Allergy"""
-    permission_classes = [IsPatient, IsTokenValid]
+    permission_classes = [IsPatient,]
 
     def get(self, request):
         allergy_data = Allergy.objects.all()
@@ -126,7 +126,7 @@ class AllergyView(APIView):
 
 class MedicationView(APIView):
     """Get all Medication"""
-    permission_classes = [IsPatient, IsTokenValid]
+    permission_classes = [IsPatient,]
 
     def get(self, request):
         medication_data = Medication.objects.all()
@@ -136,7 +136,7 @@ class MedicationView(APIView):
 
 class DiseaseView(APIView):
     """Get all Disease"""
-    permission_classes = [IsPatient, IsTokenValid]
+    permission_classes = [IsPatient,]
 
     def get(self, request):
         disease_data = Disease.objects.all()
@@ -146,7 +146,7 @@ class DiseaseView(APIView):
 
 class InjuryView(APIView):
     """Get all Injury"""
-    permission_classes = [IsPatient, IsTokenValid]
+    permission_classes = [IsPatient,]
 
     def get(self, request):
         injury_data = Injury.objects.all()
@@ -156,7 +156,7 @@ class InjuryView(APIView):
 
 class SurgeryView(APIView):
     """Get all surgery"""
-    permission_classes = [IsPatient, IsTokenValid]
+    permission_classes = [IsPatient,]
 
     def get(self, request):
         surgery_data = Surgery.objects.all()
@@ -166,7 +166,7 @@ class SurgeryView(APIView):
 
 class PatientMedicalProfileView(APIView):
     """patient medical profile update"""
-    permission_classes = [IsPatient, IsTokenValid]
+    permission_classes = [IsPatient,]
 
     def get(self, request):
         serialize_data = PatientMedicalProfileSerializer(request.user.patient_profile.patient_medical_profile)
@@ -216,7 +216,7 @@ class PatientMedicalProfileView(APIView):
 
 class PatientLifeStyleView(APIView):
     """patient life style profile update"""
-    permission_classes = [IsPatient, IsTokenValid]
+    permission_classes = [IsPatient,]
 
     def get(self, request):
         try:
@@ -241,7 +241,7 @@ class PatientLifeStyleView(APIView):
 
 class PatientCompleteProfile(APIView):
     """patient complete profile update"""
-    permission_classes = [IsPatient, IsTokenValid]
+    permission_classes = [IsPatient]
 
     def get(self, request):
         try:
@@ -265,7 +265,7 @@ class PatientCompleteProfile(APIView):
 
 class DoctorSearchView(APIView):
     """This class is used for return Doctor based on speciality,name , clinic"""
-    permission_classes = [IsPatient, IsTokenValid]
+    permission_classes = [IsPatient]
 
     def post(self, request):
         try:
@@ -298,7 +298,7 @@ class DoctorSearchView(APIView):
 
 # class DoctorAvailabilityProfile(APIView):
     """for getting particular doctor availabilities"""
-    # permission_classes = [IsPatient, IsTokenValid]
+    # permission_classes = [IsPatient,]
 
     # def post(self, request):
     #     try:
@@ -344,7 +344,7 @@ class DoctorSearchView(APIView):
 
 class DoctorAvailabilityProfile(APIView):
     """for getting particular doctor availabilities"""
-    permission_classes = [IsPatient, IsTokenValid]
+    permission_classes = [IsPatient,]
 
     def post(self, request):
         try:
@@ -398,7 +398,7 @@ class DoctorAvailabilityProfile(APIView):
 
 class DoctorAvailabilityProfileByWeek(APIView):
     """for getting particular doctor availabilities"""
-    permission_classes = [IsPatient, IsTokenValid]
+    permission_classes = [IsPatient,]
 
     def post(self, request):
         try:
@@ -462,7 +462,7 @@ class DoctorAvailabilityProfileByWeek(APIView):
 
 class DoctorAvailabilityTimeSlot(APIView):
     """for search  particular doctor slots """
-    permission_classes = [IsPatient, IsTokenValid]
+    permission_classes = [IsPatient,]
 
     def post(self, request):
         try:
@@ -495,7 +495,7 @@ class DoctorAvailabilityTimeSlot(APIView):
 
 class ConfirmAppointmentsView(APIView):
     """for saving confirm appointments details"""
-    permission_classes = [IsPatient, IsTokenValid]
+    permission_classes = [IsPatient,]
 
     def post(self, request):
         try:
@@ -526,7 +526,7 @@ class ConfirmAppointmentsView(APIView):
 
 class UpcomingAppointments(APIView):
     """for getting upcoming appointments"""
-    permission_classes = [IsPatient, IsTokenValid]
+    permission_classes = [IsPatient,]
 
     def get(self, request):
         try:
@@ -544,7 +544,7 @@ class UpcomingAppointments(APIView):
 
 class NextAppointments(APIView):
     """for getting next appointments"""
-    permission_classes = [IsPatient, IsTokenValid]
+    permission_classes = [IsPatient,]
 
     def get(self, request):
         try:
@@ -563,7 +563,7 @@ class NextAppointments(APIView):
 
 class CompletedAppointments(APIView):
     """for getting upcoming appointments"""
-    permission_classes = [IsPatient, IsTokenValid]
+    permission_classes = [IsPatient,]
 
     def get(self, request):
         try:
@@ -581,7 +581,7 @@ class CompletedAppointments(APIView):
 
 class CancleAppointment(APIView):
     """for cancle appointment"""
-    permission_classes = [IsPatient, IsTokenValid]
+    permission_classes = [IsPatient,]
 
     def post(self, request):
         try:
@@ -602,7 +602,7 @@ class CancleAppointment(APIView):
 
 class WriteReviewToDoctor(APIView):
     """write review by patient to doctor"""
-    permission_classes = [IsPatient, IsTokenValid]
+    permission_classes = [IsPatient,]
 
     def get(self, request):
         try:
@@ -671,7 +671,7 @@ class WriteReviewToDoctor(APIView):
 
 class PatientConsultationDetail(APIView):
     """access consultation details"""
-    permission_classes = [IsPatient, IsTokenValid]
+    permission_classes = [IsPatient,]
 
     def get(self, request, id):
         try:
@@ -688,7 +688,7 @@ class PatientConsultationDetail(APIView):
 
 class AddressView(APIView):
     """get and post address"""
-    permission_classes = [IsPatient, IsTokenValid]
+    permission_classes = [IsPatient,]
 
     def get(self, request):
         try:
@@ -739,7 +739,7 @@ class AddressView(APIView):
 
 class MedicineView(APIView):
     """get all medicines"""
-    permission_classes = [IsPatient, IsTokenValid]
+    permission_classes = [IsPatient,]
 
     def get(self, request):
         try:
@@ -756,7 +756,7 @@ class MedicineView(APIView):
 
 class LabTestView(APIView):
     """get all lab tests"""
-    permission_classes = [IsPatient, IsTokenValid]
+    permission_classes = [IsPatient,]
 
     def get(self, request):
         try:
@@ -773,7 +773,7 @@ class LabTestView(APIView):
 
 class MyCartItemView(APIView):
     """Add Item to cart"""
-    permission_classes = [IsPatient, IsTokenValid]
+    permission_classes = [IsPatient,]
 
     def get(self, request):
         try:
@@ -866,7 +866,7 @@ class MyCartItemView(APIView):
 
 class OrderSummary(APIView):
     """Get order summary"""
-    permission_classes = [IsPatient, IsTokenValid]
+    permission_classes = [IsPatient,]
 
     def get(self, request):
         try:
@@ -918,7 +918,7 @@ class OrderSummary(APIView):
 
 class ApplyCoupon(APIView):
     """for get and apply coupon"""
-    permission_classes = [IsPatient, IsTokenValid]
+    permission_classes = [IsPatient,]
 
     def get(self, request):
         try:
