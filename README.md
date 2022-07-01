@@ -1,29 +1,37 @@
-# README #
+# Dwylo App
 
-This README would normally document whatever steps are necessary to get your application up and running.
 
-### What is this repository for? ###
+## Set up DEV environmant
+```shell
+virtualenv --python=python3 venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
 
-* Quick summary
-* Version
-* [Learn Markdown](https://bitbucket.org/tutorials/markdowndemo)
+## for postgress db creation
+	sudo -u postgres psql
+	postgres=# create database dwylo_app;
+	postgres=# create user dwylo_user with encrypted password 'dwylo_pass';
+	postgres=# grant all privileges on database dwylo_app to dwylo_user;
 
-### How do I get set up? ###
 
-* Summary of set up
-* Configuration
-* Dependencies
-* Database configuration
-* How to run tests
-* Deployment instructions
+## for table creation
+	python manage.py makemigrations
+	python manage.py migrate
 
-### Contribution guidelines ###
+## run command to run server
+	# go to project dir and run
+	python manage.py runserver
 
-* Writing tests
-* Code review
-* Other guidelines
 
-### Who do I talk to? ###
+# EMAIL CONFIGURATION
+## Add your email and password in virtual environment
+	## EMAIL_HOST_USER = "dwylo@gmail.com"
+	## EMAIL_HOST_PASSWORD = "12345"
 
-* Repo owner or admin
-* Other community or team contact
+
+# Way to set data in virtual environment
+	export EMAIL_HOST_USER=safebeat@gmail.com EMAIL_HOST_PASSWORD=safebeato@123 DB_NAME=dwylo_app DB_USER=dwylo_user DB_PASSWORD=dwylo_pass DB_HOST=localhost
+
+# API COLLECTION LINK
+	(https://documenter.getpostman.com/view/11889792/UVeMJ3we)
